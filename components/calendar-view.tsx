@@ -7,8 +7,8 @@ import { ChevronLeft, ChevronRight, Plus, Clock, ChevronDown, ChevronUp, Minus }
 import { createClient } from "@/lib/supabase/client"
 import { AddLessonDialog } from "./add-lesson-dialog"
 import { LessonDetailsDialog } from "./lesson-details-dialog"
-import { RecurringScheduleDialog } from "./recurring-schedule-dialog"
 import { DeductLessonsDialog } from "./deduct-lessons-dialog"
+import { EnhancedRecurringScheduleDialog } from "./enhanced-recurring-schedule-dialog"
 
 interface Lesson {
   id: string
@@ -41,18 +41,25 @@ export function CalendarView() {
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set())
 
-  const toPerm = (date: Date | string) => {
-    const d = new Date(date)
-    // Добавляем 5 часов для пермского времени
-    return new Date(d.getTime() + 5 * 60 * 60 * 1000)
+  const formatTimeForDisplay = (dateStr: string) => {
+    const date = new Date(dateStr)
+    // Отображаем время в пермском часовом поясе
+    return date.toLocaleTimeString("ru-RU", {
+      timeZone: "Asia/Yekaterinburg",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
   }
 
-  const fromPerm = (dateStr: string, timeStr: string) => {
-    const [hours, minutes] = timeStr.split(":").map(Number)
-    const date = new Date(dateStr)
-    date.setHours(hours, minutes, 0, 0)
-    // Вычитаем 5 часов для сохранения в UTC
-    return new Date(date.getTime() - 5 * 60 * 60 * 1000)
+  const getLessonsForDay = (date: Date | null) => {
+    if (!date) return []
+
+    return lessons.filter((lesson) => {
+      // Конвертируем время урока в пермское время для сравнения
+      const lessonDate = new Date(lesson.scheduled_at)
+      const lessonDatePerm = new Date(lessonDate.toLocaleString("en-US", { timeZone: "Asia/Yekaterinburg" }))
+      return lessonDatePerm.toDateString() === date.toDateString()
+    })
   }
 
   useEffect(() => {
@@ -145,15 +152,6 @@ export function CalendarView() {
     }
 
     return days
-  }
-
-  const getLessonsForDay = (date: Date | null) => {
-    if (!date) return []
-
-    return lessons.filter((lesson) => {
-      const lessonDate = toPerm(lesson.scheduled_at)
-      return lessonDate.toDateString() === date.toDateString()
-    })
   }
 
   const toggleDayExpansion = (dateStr: string) => {
@@ -312,12 +310,7 @@ export function CalendarView() {
                           >
                             <div className="flex items-center space-x-1 mb-1">
                               <div className={`w-2 h-2 rounded-full ${getStatusColor(lesson.status)}`} />
-                              <span className="font-medium">
-                                {toPerm(lesson.scheduled_at).toLocaleTimeString("ru-RU", {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
+                              <span className="font-medium">{formatTimeForDisplay(lesson.scheduled_at)}</span>
                             </div>
                             <div className="font-medium text-foreground truncate">{lesson.student_name}</div>
                             <div className="text-muted-foreground text-xs">{getStatusText(lesson.status)}</div>
@@ -349,7 +342,7 @@ export function CalendarView() {
         onLessonAdded={handleLessonAdded}
       />
 
-      <RecurringScheduleDialog
+      <EnhancedRecurringScheduleDialog
         open={showRecurringSchedule}
         onOpenChange={setShowRecurringSchedule}
         students={students}

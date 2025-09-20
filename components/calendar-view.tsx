@@ -3,11 +3,12 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight, Plus, Clock } from "lucide-react"
+import { ChevronLeft, ChevronRight, Plus, Clock, ChevronDown, ChevronUp, Minus } from "lucide-react"
 import { createClient } from "@/lib/supabase/client"
 import { AddLessonDialog } from "./add-lesson-dialog"
 import { LessonDetailsDialog } from "./lesson-details-dialog"
 import { RecurringScheduleDialog } from "./recurring-schedule-dialog"
+import { DeductLessonsDialog } from "./deduct-lessons-dialog"
 
 interface Lesson {
   id: string
@@ -36,7 +37,23 @@ export function CalendarView() {
   const [loading, setLoading] = useState(true)
   const [showAddLesson, setShowAddLesson] = useState(false)
   const [showRecurringSchedule, setShowRecurringSchedule] = useState(false)
+  const [showDeductLessons, setShowDeductLessons] = useState(false)
   const [selectedLesson, setSelectedLesson] = useState<Lesson | null>(null)
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set())
+
+  const toPerm = (date: Date | string) => {
+    const d = new Date(date)
+    // Добавляем 5 часов для пермского времени
+    return new Date(d.getTime() + 5 * 60 * 60 * 1000)
+  }
+
+  const fromPerm = (dateStr: string, timeStr: string) => {
+    const [hours, minutes] = timeStr.split(":").map(Number)
+    const date = new Date(dateStr)
+    date.setHours(hours, minutes, 0, 0)
+    // Вычитаем 5 часов для сохранения в UTC
+    return new Date(date.getTime() - 5 * 60 * 60 * 1000)
+  }
 
   useEffect(() => {
     fetchData()
@@ -102,6 +119,11 @@ export function CalendarView() {
     setShowRecurringSchedule(false)
   }
 
+  const handleLessonsDeducted = () => {
+    fetchData()
+    setShowDeductLessons(false)
+  }
+
   const getDaysInMonth = () => {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
@@ -129,9 +151,19 @@ export function CalendarView() {
     if (!date) return []
 
     return lessons.filter((lesson) => {
-      const lessonDate = new Date(lesson.scheduled_at)
+      const lessonDate = toPerm(lesson.scheduled_at)
       return lessonDate.toDateString() === date.toDateString()
     })
+  }
+
+  const toggleDayExpansion = (dateStr: string) => {
+    const newExpanded = new Set(expandedDays)
+    if (newExpanded.has(dateStr)) {
+      newExpanded.delete(dateStr)
+    } else {
+      newExpanded.add(dateStr)
+    }
+    setExpandedDays(newExpanded)
   }
 
   const getStatusColor = (status: string) => {
@@ -213,6 +245,10 @@ export function CalendarView() {
           </div>
 
           <div className="flex space-x-2">
+            <Button onClick={() => setShowDeductLessons(true)} variant="outline">
+              <Minus className="h-4 w-4 mr-2" />
+              Списать уроки
+            </Button>
             <Button onClick={() => setShowRecurringSchedule(true)} variant="outline">
               <Clock className="h-4 w-4 mr-2" />
               Регулярное расписание
@@ -234,41 +270,74 @@ export function CalendarView() {
           </div>
 
           <div className="grid grid-cols-7 gap-1">
-            {getDaysInMonth().map((date, index) => (
-              <div
-                key={index}
-                className={`min-h-[120px] p-2 border rounded-lg ${date ? "bg-card hover:bg-muted/50" : "bg-muted/20"} ${
-                  date && date.toDateString() === new Date().toDateString() ? "ring-2 ring-primary" : ""
-                }`}
-              >
-                {date && (
-                  <>
-                    <div className="font-medium text-sm mb-2">{date.getDate()}</div>
-                    <div className="space-y-1">
-                      {getLessonsForDay(date).map((lesson) => (
-                        <div
-                          key={lesson.id}
-                          className="text-xs p-1 rounded cursor-pointer hover:shadow-sm transition-shadow"
-                          style={{ backgroundColor: `${getStatusColor(lesson.status)}20` }}
-                          onClick={() => setSelectedLesson(lesson)}
-                        >
-                          <div className="flex items-center space-x-1">
-                            <div className={`w-2 h-2 rounded-full ${getStatusColor(lesson.status)}`} />
-                            <span className="font-medium truncate">
-                              {new Date(lesson.scheduled_at).toLocaleTimeString("ru-RU", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
+            {getDaysInMonth().map((date, index) => {
+              const dayLessons = getLessonsForDay(date)
+              const dateStr = date?.toDateString() || ""
+              const isExpanded = expandedDays.has(dateStr)
+              const hasLessons = dayLessons.length > 0
+
+              return (
+                <div
+                  key={index}
+                  className={`${hasLessons ? "min-h-[160px]" : "min-h-[120px]"} p-2 border rounded-lg ${
+                    date ? "bg-card hover:bg-muted/50" : "bg-muted/20"
+                  } ${date && date.toDateString() === new Date().toDateString() ? "ring-2 ring-primary" : ""}`}
+                >
+                  {date && (
+                    <>
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="font-medium text-sm">{date.getDate()}</div>
+                        {hasLessons && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0"
+                            onClick={() => toggleDayExpansion(dateStr)}
+                          >
+                            {isExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          </Button>
+                        )}
+                      </div>
+
+                      <div className="space-y-1">
+                        {(isExpanded ? dayLessons : dayLessons.slice(0, 2)).map((lesson) => (
+                          <div
+                            key={lesson.id}
+                            className="text-xs p-2 rounded cursor-pointer hover:shadow-sm transition-all duration-200 border"
+                            style={{
+                              backgroundColor: `${getStatusColor(lesson.status)}15`,
+                              borderColor: `${getStatusColor(lesson.status)}40`,
+                            }}
+                            onClick={() => setSelectedLesson(lesson)}
+                          >
+                            <div className="flex items-center space-x-1 mb-1">
+                              <div className={`w-2 h-2 rounded-full ${getStatusColor(lesson.status)}`} />
+                              <span className="font-medium">
+                                {toPerm(lesson.scheduled_at).toLocaleTimeString("ru-RU", {
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                            <div className="font-medium text-foreground truncate">{lesson.student_name}</div>
+                            <div className="text-muted-foreground text-xs">{getStatusText(lesson.status)}</div>
                           </div>
-                          <div className="truncate text-muted-foreground">{lesson.student_name}</div>
-                        </div>
-                      ))}
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
+                        ))}
+
+                        {!isExpanded && dayLessons.length > 2 && (
+                          <div
+                            className="text-xs text-muted-foreground text-center py-1 cursor-pointer hover:text-foreground transition-colors"
+                            onClick={() => toggleDayExpansion(dateStr)}
+                          >
+                            +{dayLessons.length - 2} еще
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              )
+            })}
           </div>
         </CardContent>
       </Card>
@@ -285,6 +354,13 @@ export function CalendarView() {
         onOpenChange={setShowRecurringSchedule}
         students={students}
         onScheduleAdded={handleScheduleAdded}
+      />
+
+      <DeductLessonsDialog
+        open={showDeductLessons}
+        onOpenChange={setShowDeductLessons}
+        students={students}
+        onLessonsDeducted={handleLessonsDeducted}
       />
 
       {selectedLesson && (

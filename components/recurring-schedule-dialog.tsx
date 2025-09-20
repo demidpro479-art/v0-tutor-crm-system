@@ -104,7 +104,7 @@ export function RecurringScheduleDialog({
         {
           student_id: formData.student_id,
           day_of_week: Number.parseInt(formData.day_of_week),
-          time_of_day: formData.time_of_day,
+          time_of_day: formData.time_of_day, // Время в пермском формате
           duration_minutes: Number.parseInt(formData.duration_minutes),
           is_active: true,
         },

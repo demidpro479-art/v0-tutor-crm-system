@@ -52,14 +52,25 @@ export function AddLessonDialog({ open, onOpenChange, students, onLessonAdded }:
     try {
       const supabase = createClient()
 
-      // Создаем дату и время урока
-      const scheduledAt = new Date(`${formData.date}T${formData.time}`)
+      const dateTimeString = `${formData.date} ${formData.time}`
+      const scheduledAt = new Date(dateTimeString + ":00") // добавляем секунды
+
+      // Конвертируем в UTC с учетом пермского времени (UTC+5)
+      const permOffset = 5 * 60 // 5 часов в минутах
+      const utcTime = new Date(scheduledAt.getTime() - permOffset * 60 * 1000)
+
+      console.log("[v0] Создаем урок:", {
+        localInput: dateTimeString,
+        permTime: scheduledAt,
+        utcTime: utcTime,
+        utcString: utcTime.toISOString(),
+      })
 
       const { error } = await supabase.from("lessons").insert([
         {
           student_id: formData.student_id,
           title: formData.title || "Урок",
-          scheduled_at: scheduledAt.toISOString(),
+          scheduled_at: utcTime.toISOString(),
           duration_minutes: Number.parseInt(formData.duration_minutes),
           lesson_type: formData.lesson_type,
           price: Number.parseFloat(formData.price) || null,
@@ -90,15 +101,16 @@ export function AddLessonDialog({ open, onOpenChange, students, onLessonAdded }:
     }
   }
 
-  // Получаем сегодняшнюю дату в формате YYYY-MM-DD
-  const today = new Date().toISOString().split("T")[0]
+  const today = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Yekaterinburg" })
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Добавить урок</DialogTitle>
-          <DialogDescription>Создайте новый урок в расписании</DialogDescription>
+          <DialogDescription>
+            Создайте новый урок в расписании (время указывается в пермском часовом поясе UTC+5)
+          </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit}>
@@ -147,7 +159,7 @@ export function AddLessonDialog({ open, onOpenChange, students, onLessonAdded }:
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="time">Время *</Label>
+                <Label htmlFor="time">Время (Пермское) *</Label>
                 <Input
                   id="time"
                   type="time"

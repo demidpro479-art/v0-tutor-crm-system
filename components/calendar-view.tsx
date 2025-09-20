@@ -9,6 +9,7 @@ import { AddLessonDialog } from "./add-lesson-dialog"
 import { LessonDetailsDialog } from "./lesson-details-dialog"
 import { DeductLessonsDialog } from "./deduct-lessons-dialog"
 import { EnhancedRecurringScheduleDialog } from "./enhanced-recurring-schedule-dialog"
+import { AutoScheduleUpdater } from "./auto-schedule-updater"
 
 interface Lesson {
   id: string
@@ -43,9 +44,8 @@ export function CalendarView() {
 
   const formatTimeForDisplay = (dateStr: string) => {
     const date = new Date(dateStr)
-    // Отображаем время в пермском часовом поясе
-    return date.toLocaleTimeString("ru-RU", {
-      timeZone: "Asia/Yekaterinburg",
+    const permTime = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Yekaterinburg" }))
+    return permTime.toLocaleTimeString("ru-RU", {
       hour: "2-digit",
       minute: "2-digit",
     })
@@ -55,10 +55,11 @@ export function CalendarView() {
     if (!date) return []
 
     return lessons.filter((lesson) => {
-      // Конвертируем время урока в пермское время для сравнения
       const lessonDate = new Date(lesson.scheduled_at)
       const lessonDatePerm = new Date(lessonDate.toLocaleString("en-US", { timeZone: "Asia/Yekaterinburg" }))
-      return lessonDatePerm.toDateString() === date.toDateString()
+      const targetDatePerm = new Date(date.toLocaleString("en-US", { timeZone: "Asia/Yekaterinburg" }))
+
+      return lessonDatePerm.toDateString() === targetDatePerm.toDateString()
     })
   }
 
@@ -71,9 +72,10 @@ export function CalendarView() {
     setLoading(true)
 
     try {
-      // Получаем уроки за текущий месяц
       const startOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1)
-      const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0)
+      const endOfMonth = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0, 23, 59, 59)
+
+      console.log("[v0] Загружаем уроки с", startOfMonth.toISOString(), "по", endOfMonth.toISOString())
 
       const { data: lessonsData, error: lessonsError } = await supabase
         .from("lessons")
@@ -93,9 +95,9 @@ export function CalendarView() {
           student_name: lesson.students.name,
         })) || []
 
+      console.log("[v0] Загружено уроков:", formattedLessons.length)
       setLessons(formattedLessons)
 
-      // Получаем активных учеников
       const { data: studentsData, error: studentsError } = await supabase
         .from("students")
         .select("id, name, remaining_lessons, is_active")
@@ -131,6 +133,11 @@ export function CalendarView() {
     setShowDeductLessons(false)
   }
 
+  const handleScheduleAutoUpdated = () => {
+    console.log("[v0] Расписание автоматически обновлено")
+    fetchData()
+  }
+
   const getDaysInMonth = () => {
     const year = currentDate.getFullYear()
     const month = currentDate.getMonth()
@@ -141,12 +148,10 @@ export function CalendarView() {
 
     const days = []
 
-    // Добавляем пустые дни в начале месяца
     for (let i = 0; i < startingDayOfWeek; i++) {
       days.push(null)
     }
 
-    // Добавляем дни месяца
     for (let day = 1; day <= daysInMonth; day++) {
       days.push(new Date(year, month, day))
     }
@@ -228,6 +233,8 @@ export function CalendarView() {
 
   return (
     <>
+      <AutoScheduleUpdater onScheduleUpdated={handleScheduleAutoUpdated} />
+
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center space-x-4">

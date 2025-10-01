@@ -17,13 +17,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { createClient } from "@/lib/supabase/client"
-import { Trash2, User, CheckCircle } from "lucide-react"
+import { Trash2, User, CheckCircle, Clock, CalendarIcon } from "lucide-react"
+import { Alert, AlertDescription } from "@/components/ui/alert"
 
 interface Lesson {
   id: string
   student_id: string
   title: string
   scheduled_at: string
+  original_time?: string
   duration_minutes: number
   status: string
   lesson_type: string
@@ -41,10 +43,16 @@ interface LessonDetailsDialogProps {
 
 export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdated }: LessonDetailsDialogProps) {
   const [loading, setLoading] = useState(false)
+
+  const displayTime = lesson.original_time || new Date(lesson.scheduled_at).toTimeString().slice(0, 5)
+  const scheduledDate = new Date(lesson.scheduled_at)
+
+  const actualStartTime = new Date(scheduledDate.getTime() - 2 * 60 * 60 * 1000)
+
   const [formData, setFormData] = useState({
     title: lesson.title,
-    date: new Date(lesson.scheduled_at).toISOString().split("T")[0],
-    time: new Date(lesson.scheduled_at).toTimeString().slice(0, 5),
+    date: scheduledDate.toISOString().split("T")[0],
+    time: displayTime,
     duration_minutes: lesson.duration_minutes.toString(),
     status: lesson.status,
     price: lesson.price?.toString() || "",
@@ -57,14 +65,15 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
     try {
       const supabase = createClient()
 
-      // Создаем дату и время урока
-      const scheduledAt = new Date(`${formData.date}T${formData.time}`)
+      const dateTimeString = `${formData.date}T${formData.time}:00`
+      const scheduledAt = new Date(dateTimeString)
 
       const { error } = await supabase
         .from("lessons")
         .update({
           title: formData.title,
           scheduled_at: scheduledAt.toISOString(),
+          original_time: formData.time, // Сохраняем оригинальное время
           duration_minutes: Number.parseInt(formData.duration_minutes),
           status: formData.status,
           price: Number.parseFloat(formData.price) || null,
@@ -85,19 +94,12 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
     setLoading(true)
 
     try {
-      const response = await fetch(`/api/lessons/${lesson.id}/complete`, {
-        method: "POST",
-      })
+      const supabase = createClient()
 
-      if (!response.ok) {
-        throw new Error("Ошибка завершения урока")
-      }
+      const { error } = await supabase.from("lessons").update({ status: "completed" }).eq("id", lesson.id)
 
-      const result = await response.json()
-
-      if (result.success) {
-        onLessonUpdated()
-      }
+      if (error) throw error
+      onLessonUpdated()
     } catch (error) {
       console.error("Ошибка завершения урока:", error)
     } finally {
@@ -155,28 +157,55 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto animate-slide-in">
         <DialogHeader>
-          <DialogTitle>Детали урока</DialogTitle>
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <CalendarIcon className="h-5 w-5 text-primary" />
+            Детали урока
+          </DialogTitle>
           <DialogDescription>Просмотр и редактирование урока</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
+          <Alert className="bg-primary/5 border-primary/20">
+            <Clock className="h-4 w-4 text-primary" />
+            <AlertDescription className="text-sm">
+              <div className="space-y-1">
+                <div>
+                  <strong>Введенное время:</strong> {displayTime}
+                </div>
+                <div>
+                  <strong>Фактическое начало:</strong>{" "}
+                  {actualStartTime.toLocaleTimeString("ru-RU", { hour: "2-digit", minute: "2-digit" })}
+                </div>
+                <div className="text-xs text-muted-foreground mt-2">
+                  Урок начинается на 2 часа раньше введенного времени
+                </div>
+              </div>
+            </AlertDescription>
+          </Alert>
+
           {/* Информация об ученике */}
-          <div className="flex items-center space-x-3 p-3 bg-muted rounded-lg">
-            <User className="h-5 w-5 text-muted-foreground" />
-            <div>
-              <div className="font-medium">{lesson.student_name}</div>
-              <div className="text-sm text-muted-foreground">
-                {lesson.lesson_type === "regular" ? "Регулярный урок" : "Разовый урок"}
+          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg card-enhanced">
+            <div className="flex items-center space-x-3">
+              <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                <User className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <div className="font-semibold text-lg">{lesson.student_name}</div>
+                <div className="text-sm text-muted-foreground">
+                  {lesson.lesson_type === "regular" ? "Регулярный урок" : "Разовый урок"}
+                </div>
               </div>
             </div>
-            <div className="ml-auto flex items-center space-x-2">
-              <Badge variant={getStatusColor(lesson.status)}>{getStatusText(lesson.status)}</Badge>
+            <div className="flex items-center space-x-2">
+              <Badge variant={getStatusColor(lesson.status)} className="text-sm px-3 py-1">
+                {getStatusText(lesson.status)}
+              </Badge>
               {lesson.status === "scheduled" && (
-                <Button size="sm" onClick={handleQuickComplete} disabled={loading}>
+                <Button size="sm" onClick={handleQuickComplete} disabled={loading} className="ml-2">
                   <CheckCircle className="h-4 w-4 mr-1" />
-                  Провести
+                  Проведено
                 </Button>
               )}
             </div>
@@ -187,39 +216,52 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
           {/* Форма редактирования */}
           <div className="space-y-4">
             <div className="grid gap-2">
-              <Label htmlFor="title">Название урока</Label>
+              <Label htmlFor="title" className="text-sm font-medium">
+                Название урока
+              </Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="transition-all"
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="date">Дата</Label>
+                <Label htmlFor="date" className="text-sm font-medium flex items-center gap-1">
+                  <CalendarIcon className="h-3 w-3" />
+                  Дата
+                </Label>
                 <Input
                   id="date"
                   type="date"
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
+                  className="transition-all"
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="time">Время</Label>
+                <Label htmlFor="time" className="text-sm font-medium flex items-center gap-1">
+                  <Clock className="h-3 w-3" />
+                  Время
+                </Label>
                 <Input
                   id="time"
                   type="time"
                   value={formData.time}
                   onChange={(e) => setFormData({ ...formData, time: e.target.value })}
+                  className="transition-all"
                 />
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="grid gap-2">
-                <Label htmlFor="duration">Длительность (мин)</Label>
+                <Label htmlFor="duration" className="text-sm font-medium">
+                  Длительность (мин)
+                </Label>
                 <Input
                   id="duration"
                   type="number"
@@ -227,11 +269,14 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
                   step="15"
                   value={formData.duration_minutes}
                   onChange={(e) => setFormData({ ...formData, duration_minutes: e.target.value })}
+                  className="transition-all"
                 />
               </div>
 
               <div className="grid gap-2">
-                <Label htmlFor="price">Стоимость (₽)</Label>
+                <Label htmlFor="price" className="text-sm font-medium">
+                  Стоимость (₽)
+                </Label>
                 <Input
                   id="price"
                   type="number"
@@ -239,14 +284,17 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
                   step="0.01"
                   value={formData.price}
                   onChange={(e) => setFormData({ ...formData, price: e.target.value })}
+                  className="transition-all"
                 />
               </div>
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="status">Статус</Label>
+              <Label htmlFor="status" className="text-sm font-medium">
+                Статус
+              </Label>
               <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                <SelectTrigger>
+                <SelectTrigger className="transition-all">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -259,28 +307,32 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="notes">Заметки</Label>
+              <Label htmlFor="notes" className="text-sm font-medium">
+                Заметки
+              </Label>
               <Textarea
                 id="notes"
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 rows={3}
+                className="transition-all resize-none"
+                placeholder="Дополнительная информация..."
               />
             </div>
           </div>
         </div>
 
-        <DialogFooter className="flex justify-between">
-          <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+        <DialogFooter className="flex flex-col sm:flex-row justify-between gap-2">
+          <Button variant="destructive" onClick={handleDelete} disabled={loading} className="w-full sm:w-auto">
             <Trash2 className="h-4 w-4 mr-2" />
             Удалить
           </Button>
 
-          <div className="space-x-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
+          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+            <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
               Отмена
             </Button>
-            <Button onClick={handleUpdate} disabled={loading}>
+            <Button onClick={handleUpdate} disabled={loading} className="w-full sm:w-auto min-w-[120px]">
               {loading ? "Сохранение..." : "Сохранить"}
             </Button>
           </div>

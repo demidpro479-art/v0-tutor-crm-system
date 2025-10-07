@@ -17,8 +17,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { createClient } from "@/lib/supabase/client"
-import { Trash2, User, CheckCircle, Clock, CalendarIcon } from "lucide-react"
+import { Trash2, User, CheckCircle, Clock, CalendarIcon, Star, FileText } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
+import { useToast } from "@/hooks/use-toast"
 
 interface Lesson {
   id: string
@@ -32,6 +33,8 @@ interface Lesson {
   price: number
   notes: string
   student_name: string
+  grade?: number
+  homework?: string
 }
 
 interface LessonDetailsDialogProps {
@@ -43,6 +46,7 @@ interface LessonDetailsDialogProps {
 
 export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdated }: LessonDetailsDialogProps) {
   const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
 
   const displayTime = lesson.original_time || new Date(lesson.scheduled_at).toTimeString().slice(0, 5)
   const scheduledDate = new Date(lesson.scheduled_at)
@@ -57,6 +61,8 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
     status: lesson.status,
     price: lesson.price?.toString() || "",
     notes: lesson.notes || "",
+    grade: lesson.grade?.toString() || "",
+    homework: lesson.homework || "",
   })
 
   const handleUpdate = async () => {
@@ -73,18 +79,31 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
         .update({
           title: formData.title,
           scheduled_at: scheduledAt.toISOString(),
-          original_time: formData.time, // Сохраняем оригинальное время
+          original_time: formData.time,
           duration_minutes: Number.parseInt(formData.duration_minutes),
           status: formData.status,
           price: Number.parseFloat(formData.price) || null,
           notes: formData.notes || null,
+          grade: formData.grade ? Number.parseInt(formData.grade) : null,
+          homework: formData.homework || null,
         })
         .eq("id", lesson.id)
 
       if (error) throw error
+
+      toast({
+        title: "Успешно",
+        description: "Урок обновлен",
+      })
+
       onLessonUpdated()
     } catch (error) {
       console.error("Ошибка обновления урока:", error)
+      toast({
+        title: "Ошибка",
+        description: "Не удалось обновить урок",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -99,9 +118,20 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
       const { error } = await supabase.from("lessons").update({ status: "completed" }).eq("id", lesson.id)
 
       if (error) throw error
+
+      toast({
+        title: "Успешно",
+        description: "Урок отмечен как проведенный",
+      })
+
       onLessonUpdated()
     } catch (error) {
       console.error("Ошибка завершения урока:", error)
+      toast({
+        title: "Ошибка",
+        description: "Не удалось завершить урок",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -120,10 +150,21 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
       const { error } = await supabase.from("lessons").delete().eq("id", lesson.id)
 
       if (error) throw error
+
+      toast({
+        title: "Успешно",
+        description: "Урок удален",
+      })
+
       onLessonUpdated()
       onOpenChange(false)
     } catch (error) {
       console.error("Ошибка удаления урока:", error)
+      toast({
+        title: "Ошибка",
+        description: "Не удалось удалить урок",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -289,21 +330,61 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
               </div>
             </div>
 
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="status" className="text-sm font-medium">
+                  Статус
+                </Label>
+                <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
+                  <SelectTrigger className="transition-all">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="scheduled">Запланирован</SelectItem>
+                    <SelectItem value="completed">Проведен</SelectItem>
+                    <SelectItem value="cancelled">Отменен</SelectItem>
+                    <SelectItem value="missed">Пропущен</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label htmlFor="grade" className="text-sm font-medium flex items-center gap-1">
+                  <Star className="h-3 w-3" />
+                  Оценка
+                </Label>
+                <Select
+                  value={formData.grade || "0"}
+                  onValueChange={(value) => setFormData({ ...formData, grade: value })}
+                >
+                  <SelectTrigger className="transition-all">
+                    <SelectValue placeholder="Не выставлена" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="0">Не выставлена</SelectItem>
+                    <SelectItem value="5">5 - Отлично</SelectItem>
+                    <SelectItem value="4">4 - Хорошо</SelectItem>
+                    <SelectItem value="3">3 - Удовлетворительно</SelectItem>
+                    <SelectItem value="2">2 - Неудовлетворительно</SelectItem>
+                    <SelectItem value="1">1 - Плохо</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="grid gap-2">
-              <Label htmlFor="status" className="text-sm font-medium">
-                Статус
+              <Label htmlFor="homework" className="text-sm font-medium flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                Домашнее задание
               </Label>
-              <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                <SelectTrigger className="transition-all">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="scheduled">Запланирован</SelectItem>
-                  <SelectItem value="completed">Проведен</SelectItem>
-                  <SelectItem value="cancelled">Отменен</SelectItem>
-                  <SelectItem value="missed">Пропущен</SelectItem>
-                </SelectContent>
-              </Select>
+              <Textarea
+                id="homework"
+                value={formData.homework}
+                onChange={(e) => setFormData({ ...formData, homework: e.target.value })}
+                rows={3}
+                className="transition-all resize-none"
+                placeholder="Опишите домашнее задание для ученика..."
+              />
             </div>
 
             <div className="grid gap-2">

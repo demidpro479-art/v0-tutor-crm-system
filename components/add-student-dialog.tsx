@@ -15,8 +15,10 @@ import {
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
+import { Switch } from "@/components/ui/switch"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
+import { UserPlus } from "lucide-react"
 
 interface AddStudentDialogProps {
   open: boolean
@@ -27,6 +29,7 @@ interface AddStudentDialogProps {
 export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStudentDialogProps) {
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
+  const [createAccount, setCreateAccount] = useState(true)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -72,10 +75,31 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
 
       console.log("[v0] Ученик успешно добавлен:", data)
 
-      toast({
-        title: "Успешно",
-        description: "Ученик успешно добавлен",
-      })
+      if (createAccount && data && data[0]) {
+        const { data: accountData, error: accountError } = await supabase.rpc("create_student_account", {
+          p_student_id: data[0].id,
+        })
+
+        if (accountError) {
+          console.error("[v0] Ошибка создания аккаунта:", accountError)
+          toast({
+            title: "Ученик добавлен",
+            description: "Но не удалось создать учетную запись. Создайте её вручную.",
+            variant: "destructive",
+          })
+        } else if (accountData && accountData[0]) {
+          toast({
+            title: "Успешно!",
+            description: `Ученик добавлен. Логин: ${accountData[0].login}, Пароль: ${accountData[0].password}`,
+            duration: 10000,
+          })
+        }
+      } else {
+        toast({
+          title: "Успешно",
+          description: "Ученик успешно добавлен",
+        })
+      }
 
       // Сброс формы
       setFormData({
@@ -97,9 +121,12 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
-          <DialogTitle>Добавить ученика</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <UserPlus className="h-5 w-5 text-primary" />
+            Добавить ученика
+          </DialogTitle>
           <DialogDescription>Заполните информацию о новом ученике</DialogDescription>
         </DialogHeader>
 
@@ -112,6 +139,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
+                placeholder="Иван Иванов"
               />
             </div>
 
@@ -122,6 +150,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="student@example.com"
               />
             </div>
 
@@ -131,6 +160,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
                 id="phone"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                placeholder="+7 (999) 123-45-67"
               />
             </div>
 
@@ -143,6 +173,7 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
                 step="0.01"
                 value={formData.hourly_rate}
                 onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
+                placeholder="1000"
               />
             </div>
 
@@ -153,7 +184,18 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
                 value={formData.notes}
                 onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
                 rows={3}
+                placeholder="Дополнительная информация об ученике..."
               />
+            </div>
+
+            <div className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+              <div className="space-y-0.5">
+                <Label htmlFor="create-account" className="text-sm font-medium">
+                  Создать учетную запись
+                </Label>
+                <p className="text-xs text-muted-foreground">Автоматически создать логин и пароль для ученика</p>
+              </div>
+              <Switch id="create-account" checked={createAccount} onCheckedChange={setCreateAccount} />
             </div>
           </div>
 

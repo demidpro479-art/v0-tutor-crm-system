@@ -54,7 +54,7 @@ export default function Page() {
       // Находим ученика по логину
       const { data: student, error: studentError } = await supabase
         .from("students")
-        .select("id, student_password, email")
+        .select("id, student_password, student_login")
         .eq("student_login", studentLogin)
         .single()
 
@@ -67,8 +67,8 @@ export default function Page() {
         throw new Error("Неверный логин или пароль")
       }
 
-      // Если у ученика нет email, создаем временный
-      const studentEmail = student.email || `${studentLogin}@student.local`
+      // Формируем email для входа
+      const studentEmail = `${studentLogin}@student.tutorcrm.local`
 
       // Входим через Supabase Auth
       const { error: authError } = await supabase.auth.signInWithPassword({
@@ -77,28 +77,7 @@ export default function Page() {
       })
 
       if (authError) {
-        // Если аккаунт не существует, создаем его
-        const { error: signUpError } = await supabase.auth.signUp({
-          email: studentEmail,
-          password: studentPassword,
-          options: {
-            data: {
-              role: "student",
-              student_id: student.id,
-            },
-            emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/student`,
-          },
-        })
-
-        if (signUpError) throw signUpError
-
-        // После создания входим
-        const { error: loginError } = await supabase.auth.signInWithPassword({
-          email: studentEmail,
-          password: studentPassword,
-        })
-
-        if (loginError) throw loginError
+        throw new Error("Неверный логин или пароль. Убедитесь, что учетная запись была создана.")
       }
 
       router.push("/student")

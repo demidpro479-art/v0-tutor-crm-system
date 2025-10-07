@@ -88,9 +88,45 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
             variant: "destructive",
           })
         } else if (accountData && accountData[0]) {
+          const login = accountData[0].login
+          const password = accountData[0].password
+          const studentEmail = `${login}@student.tutorcrm.local`
+
+          // Создаем реальный Supabase аккаунт для ученика
+          const { error: signUpError } = await supabase.auth.admin.createUser({
+            email: studentEmail,
+            password: password,
+            email_confirm: true,
+            user_metadata: {
+              role: "student",
+              student_id: data[0].id,
+              student_name: formData.name,
+            },
+          })
+
+          if (signUpError) {
+            console.error("[v0] Ошибка создания Supabase аккаунта:", signUpError)
+            // Пробуем альтернативный метод через signUp
+            const { error: altSignUpError } = await supabase.auth.signUp({
+              email: studentEmail,
+              password: password,
+              options: {
+                data: {
+                  role: "student",
+                  student_id: data[0].id,
+                  student_name: formData.name,
+                },
+              },
+            })
+
+            if (altSignUpError) {
+              console.error("[v0] Альтернативный метод тоже не сработал:", altSignUpError)
+            }
+          }
+
           toast({
             title: "Успешно!",
-            description: `Ученик добавлен. Логин: ${accountData[0].login}, Пароль: ${accountData[0].password}`,
+            description: `Ученик добавлен. Логин: ${login}, Пароль: ${password}`,
             duration: 10000,
           })
         }

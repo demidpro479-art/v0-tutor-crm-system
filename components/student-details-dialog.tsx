@@ -16,7 +16,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { createClient } from "@/lib/supabase/client"
-import { Plus, Trash2 } from "lucide-react"
+import { Plus, Trash2, UserPlus, Copy, Check } from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
 
 interface Student {
   id: string
@@ -29,6 +30,9 @@ interface Student {
   hourly_rate: number
   is_active: boolean
   created_at: string
+  student_login?: string
+  student_password?: string
+  has_account?: boolean
 }
 
 interface StudentDetailsDialogProps {
@@ -43,6 +47,9 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
   const [showAddLessons, setShowAddLessons] = useState(false)
   const [lessonsToAdd, setLessonsToAdd] = useState("")
   const [paymentAmount, setPaymentAmount] = useState("")
+  const [copiedLogin, setCopiedLogin] = useState(false)
+  const [copiedPassword, setCopiedPassword] = useState(false)
+  const { toast } = useToast()
   const [formData, setFormData] = useState({
     name: student.name,
     email: student.email || "",
@@ -129,6 +136,55 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
     }
   }
 
+  const handleCreateAccount = async () => {
+    setLoading(true)
+
+    try {
+      const supabase = createClient()
+
+      const { data, error } = await supabase.rpc("create_student_account", {
+        p_student_id: student.id,
+      })
+
+      if (error) throw error
+
+      toast({
+        title: "Учетная запись создана",
+        description: `Логин: ${data[0].login}, Пароль: ${data[0].password}`,
+      })
+
+      onStudentUpdated()
+    } catch (error) {
+      console.error("Ошибка создания учетной записи:", error)
+      toast({
+        title: "Ошибка",
+        description: "Не удалось создать учетную запись",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const copyToClipboard = async (text: string, type: "login" | "password") => {
+    try {
+      await navigator.clipboard.writeText(text)
+      if (type === "login") {
+        setCopiedLogin(true)
+        setTimeout(() => setCopiedLogin(false), 2000)
+      } else {
+        setCopiedPassword(true)
+        setTimeout(() => setCopiedPassword(false), 2000)
+      }
+      toast({
+        title: "Скопировано",
+        description: `${type === "login" ? "Логин" : "Пароль"} скопирован в буфер обмена`,
+      })
+    } catch (error) {
+      console.error("Ошибка копирования:", error)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
@@ -148,6 +204,45 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
               <div className="text-2xl font-bold">{student.remaining_lessons}</div>
               <div className="text-sm text-muted-foreground">Осталось уроков</div>
             </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <h4 className="font-medium">Учетная запись ученика</h4>
+              {!student.has_account && (
+                <Button size="sm" onClick={handleCreateAccount} disabled={loading}>
+                  <UserPlus className="h-4 w-4 mr-1" />
+                  Создать аккаунт
+                </Button>
+              )}
+            </div>
+
+            {student.has_account && student.student_login && student.student_password && (
+              <div className="p-4 bg-muted rounded-lg space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Логин</Label>
+                    <div className="font-mono font-medium">{student.student_login}</div>
+                  </div>
+                  <Button size="sm" variant="ghost" onClick={() => copyToClipboard(student.student_login!, "login")}>
+                    {copiedLogin ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label className="text-xs text-muted-foreground">Пароль</Label>
+                    <div className="font-mono font-medium">{student.student_password}</div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => copyToClipboard(student.student_password!, "password")}
+                  >
+                    {copiedPassword ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Добавление уроков */}

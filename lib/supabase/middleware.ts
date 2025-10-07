@@ -37,6 +37,35 @@ export async function updateSession(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
+  if (user) {
+    // Получаем профиль пользователя для определения роли
+    const { data: profile } = await supabase.from("profiles").select("role, student_id").eq("id", user.id).single()
+
+    // Если пользователь - ученик, перенаправляем на страницу ученика
+    if (profile?.role === "student") {
+      if (
+        !request.nextUrl.pathname.startsWith("/student") &&
+        !request.nextUrl.pathname.startsWith("/auth") &&
+        request.nextUrl.pathname !== "/"
+      ) {
+        const url = request.nextUrl.clone()
+        url.pathname = "/student"
+        return NextResponse.redirect(url)
+      }
+    }
+    // Если пользователь - репетитор, перенаправляем на дашборд
+    else if (profile?.role === "tutor") {
+      if (
+        request.nextUrl.pathname.startsWith("/student") ||
+        (request.nextUrl.pathname === "/" && !request.nextUrl.pathname.startsWith("/auth"))
+      ) {
+        const url = request.nextUrl.clone()
+        url.pathname = "/dashboard"
+        return NextResponse.redirect(url)
+      }
+    }
+  }
+
   if (
     request.nextUrl.pathname !== "/" &&
     !user &&

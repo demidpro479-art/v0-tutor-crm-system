@@ -7,18 +7,21 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
 
 export default function Page() {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
+  const [tutorEmail, setTutorEmail] = useState("")
+  const [tutorPassword, setTutorPassword] = useState("")
+  const [studentLogin, setStudentLogin] = useState("")
+  const [studentPassword, setStudentPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const router = useRouter()
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleTutorLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     const supabase = createClient()
     setIsLoading(true)
@@ -26,8 +29,8 @@ export default function Page() {
 
     try {
       const { error } = await supabase.auth.signInWithPassword({
-        email,
-        password,
+        email: tutorEmail,
+        password: tutorPassword,
         options: {
           emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
         },
@@ -35,59 +38,178 @@ export default function Page() {
       if (error) throw error
       router.push("/dashboard")
     } catch (error: unknown) {
-      setError(error instanceof Error ? error.message : "An error occurred")
+      setError(error instanceof Error ? error.message : "Ошибка входа")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const handleStudentLogin = async (e: React.FormEvent) => {
+    e.preventDefault()
+    const supabase = createClient()
+    setIsLoading(true)
+    setError(null)
+
+    try {
+      // Находим ученика по логину
+      const { data: student, error: studentError } = await supabase
+        .from("students")
+        .select("id, student_password, email")
+        .eq("student_login", studentLogin)
+        .single()
+
+      if (studentError || !student) {
+        throw new Error("Неверный логин или пароль")
+      }
+
+      // Проверяем пароль
+      if (student.student_password !== studentPassword) {
+        throw new Error("Неверный логин или пароль")
+      }
+
+      // Если у ученика нет email, создаем временный
+      const studentEmail = student.email || `${studentLogin}@student.local`
+
+      // Входим через Supabase Auth
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: studentEmail,
+        password: studentPassword,
+      })
+
+      if (authError) {
+        // Если аккаунт не существует, создаем его
+        const { error: signUpError } = await supabase.auth.signUp({
+          email: studentEmail,
+          password: studentPassword,
+          options: {
+            data: {
+              role: "student",
+              student_id: student.id,
+            },
+            emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/student`,
+          },
+        })
+
+        if (signUpError) throw signUpError
+
+        // После создания входим
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+          email: studentEmail,
+          password: studentPassword,
+        })
+
+        if (loginError) throw loginError
+      }
+
+      router.push("/student")
+    } catch (error: unknown) {
+      setError(error instanceof Error ? error.message : "Ошибка входа")
     } finally {
       setIsLoading(false)
     }
   }
 
   return (
-    <div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-      <div className="w-full max-w-sm">
+    <div className="flex min-h-svh w-full items-center justify-center p-4 md:p-10 bg-gradient-to-br from-blue-50 via-white to-cyan-50">
+      <div className="w-full max-w-md">
         <div className="flex flex-col gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-2xl">Login</CardTitle>
-              <CardDescription>Enter your email below to login to your account</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleLogin}>
-                <div className="flex flex-col gap-6">
-                  <div className="grid gap-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="m@example.com"
-                      required
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  </div>
-                  {error && <p className="text-sm text-red-500">{error}</p>}
-                  <Button type="submit" className="w-full" disabled={isLoading}>
-                    {isLoading ? "Logging in..." : "Login"}
-                  </Button>
-                </div>
-                <div className="mt-4 text-center text-sm">
-                  Don&apos;t have an account?{" "}
-                  <Link href="/auth/sign-up" className="underline underline-offset-4">
-                    Sign up
-                  </Link>
-                </div>
-              </form>
-            </CardContent>
-          </Card>
+          <div className="text-center mb-4">
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">CRM для репетитора</h1>
+            <p className="text-gray-600">Войдите в свой аккаунт</p>
+          </div>
+
+          <Tabs defaultValue="tutor" className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="tutor">Репетитор</TabsTrigger>
+              <TabsTrigger value="student">Ученик</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="tutor">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl">Вход для репетитора</CardTitle>
+                  <CardDescription>Введите email и пароль</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleTutorLogin}>
+                    <div className="flex flex-col gap-6">
+                      <div className="grid gap-2">
+                        <Label htmlFor="tutor-email">Email</Label>
+                        <Input
+                          id="tutor-email"
+                          type="email"
+                          placeholder="your@email.com"
+                          required
+                          value={tutorEmail}
+                          onChange={(e) => setTutorEmail(e.target.value)}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="tutor-password">Пароль</Label>
+                        <Input
+                          id="tutor-password"
+                          type="password"
+                          required
+                          value={tutorPassword}
+                          onChange={(e) => setTutorPassword(e.target.value)}
+                        />
+                      </div>
+                      {error && <p className="text-sm text-red-500">{error}</p>}
+                      <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? "Вход..." : "Войти"}
+                      </Button>
+                    </div>
+                    <div className="mt-4 text-center text-sm">
+                      Нет аккаунта?{" "}
+                      <Link href="/auth/sign-up" className="underline underline-offset-4">
+                        Зарегистрироваться
+                      </Link>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="student">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-2xl">Вход для ученика</CardTitle>
+                  <CardDescription>Введите логин и пароль, полученные от репетитора</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <form onSubmit={handleStudentLogin}>
+                    <div className="flex flex-col gap-6">
+                      <div className="grid gap-2">
+                        <Label htmlFor="student-login">Логин</Label>
+                        <Input
+                          id="student-login"
+                          type="text"
+                          placeholder="Ваш логин"
+                          required
+                          value={studentLogin}
+                          onChange={(e) => setStudentLogin(e.target.value)}
+                        />
+                      </div>
+                      <div className="grid gap-2">
+                        <Label htmlFor="student-password">Пароль</Label>
+                        <Input
+                          id="student-password"
+                          type="password"
+                          required
+                          value={studentPassword}
+                          onChange={(e) => setStudentPassword(e.target.value)}
+                        />
+                      </div>
+                      {error && <p className="text-sm text-red-500">{error}</p>}
+                      <Button type="submit" className="w-full" disabled={isLoading}>
+                        {isLoading ? "Вход..." : "Войти"}
+                      </Button>
+                    </div>
+                  </form>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

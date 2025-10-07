@@ -8,6 +8,7 @@ import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { AddStudentDialog } from "./add-student-dialog"
 import { StudentDetailsDialog } from "./student-details-dialog"
+import { useToast } from "@/hooks/use-toast"
 
 interface Student {
   id: string
@@ -27,6 +28,7 @@ export function StudentsOverview() {
   const [loading, setLoading] = useState(true)
   const [showAddDialog, setShowAddDialog] = useState(false)
   const [selectedStudent, setSelectedStudent] = useState<Student | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     fetchStudents()
@@ -36,23 +38,39 @@ export function StudentsOverview() {
     const supabase = createClient()
 
     try {
+      console.log("[v0] Загрузка учеников...")
+
       const { data, error } = await supabase.from("students").select("*").order("created_at", { ascending: false })
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Ошибка загрузки учеников:", error)
+        toast({
+          title: "Ошибка",
+          description: `Не удалось загрузить учеников: ${error.message}`,
+          variant: "destructive",
+        })
+        throw error
+      }
+
+      console.log("[v0] Загружено учеников:", data?.length || 0)
+      console.log("[v0] Данные учеников:", data)
+
       setStudents(data || [])
     } catch (error) {
-      console.error("Ошибка загрузки учеников:", error)
+      console.error("[v0] Ошибка загрузки учеников:", error)
     } finally {
       setLoading(false)
     }
   }
 
   const handleStudentAdded = () => {
+    console.log("[v0] Обновление списка учеников после добавления")
     fetchStudents()
     setShowAddDialog(false)
   }
 
   const handleStudentUpdated = () => {
+    console.log("[v0] Обновление списка учеников после изменения")
     fetchStudents()
     setSelectedStudent(null)
   }
@@ -80,7 +98,7 @@ export function StudentsOverview() {
     <>
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Ученики</CardTitle>
+          <CardTitle>Ученики ({students.length})</CardTitle>
           <Button onClick={() => setShowAddDialog(true)}>
             <Plus className="h-4 w-4 mr-2" />
             Добавить ученика

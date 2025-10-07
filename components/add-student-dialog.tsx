@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { createClient } from "@/lib/supabase/client"
+import { useToast } from "@/hooks/use-toast"
 
 interface AddStudentDialogProps {
   open: boolean
@@ -25,6 +26,7 @@ interface AddStudentDialogProps {
 
 export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStudentDialogProps) {
   const [loading, setLoading] = useState(false)
+  const { toast } = useToast()
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -40,17 +42,40 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
     try {
       const supabase = createClient()
 
-      const { error } = await supabase.from("students").insert([
-        {
-          name: formData.name,
-          email: formData.email || null,
-          phone: formData.phone || null,
-          hourly_rate: Number.parseFloat(formData.hourly_rate) || 0,
-          notes: formData.notes || null,
-        },
-      ])
+      console.log("[v0] Добавление ученика:", formData)
 
-      if (error) throw error
+      const { data, error } = await supabase
+        .from("students")
+        .insert([
+          {
+            name: formData.name,
+            email: formData.email || null,
+            phone: formData.phone || null,
+            hourly_rate: Number.parseFloat(formData.hourly_rate) || 0,
+            notes: formData.notes || null,
+            remaining_lessons: 0,
+            total_paid_lessons: 0,
+            is_active: true,
+          },
+        ])
+        .select()
+
+      if (error) {
+        console.error("[v0] Ошибка при добавлении ученика:", error)
+        toast({
+          title: "Ошибка",
+          description: `Не удалось добавить ученика: ${error.message}`,
+          variant: "destructive",
+        })
+        throw error
+      }
+
+      console.log("[v0] Ученик успешно добавлен:", data)
+
+      toast({
+        title: "Успешно",
+        description: "Ученик успешно добавлен",
+      })
 
       // Сброс формы
       setFormData({
@@ -61,9 +86,10 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
         notes: "",
       })
 
+      onOpenChange(false)
       onStudentAdded()
     } catch (error) {
-      console.error("Ошибка добавления ученика:", error)
+      console.error("[v0] Ошибка добавления ученика:", error)
     } finally {
       setLoading(false)
     }

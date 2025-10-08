@@ -129,7 +129,7 @@ export function StudentDashboard({
     })
   }
 
-  const displayName = profile.full_name || student?.name || "Ученик"
+  const displayName = profile.full_name || "Ученик"
 
   if (loading) {
     return (
@@ -196,13 +196,14 @@ export function StudentDashboard({
       {showNicknameDialog && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
-            <h2 className="text-xl font-bold mb-4">Добро пожаловать!</h2>
+            <h2 className="text-xl font-bold mb-4">Как вас называть?</h2>
             <p className="text-gray-600 mb-4">Установите свой никнейм для личного кабинета</p>
             <Input
               value={nickname}
               onChange={(e) => setNickname(e.target.value)}
               placeholder="Введите никнейм"
               className="mb-4"
+              autoFocus
             />
             <Button onClick={handleSetNickname} disabled={!nickname.trim()} className="w-full">
               Сохранить

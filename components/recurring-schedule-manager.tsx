@@ -5,7 +5,7 @@ import { createClient } from "@/lib/supabase/client"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, Edit, Trash2 } from "lucide-react"
+import { Calendar, Clock, Edit } from "lucide-react"
 import { ManageRecurringScheduleDialog } from "@/components/manage-recurring-schedule-dialog"
 import { useToast } from "@/hooks/use-toast"
 
@@ -14,7 +14,7 @@ interface RecurringSchedule {
   student_id: string
   student_name: string
   day_of_week: number
-  time: string
+  time_of_day: string
   is_active: boolean
 }
 
@@ -23,7 +23,7 @@ const DAYS = ["Воскресенье", "Понедельник", "Вторни�
 export function RecurringScheduleManager() {
   const [schedules, setSchedules] = useState<RecurringSchedule[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedSchedule, setSelectedSchedule] = useState<RecurringSchedule | null>(null)
+  const [selectedStudent, setSelectedStudent] = useState<{ id: string; name: string } | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const { toast } = useToast()
 
@@ -37,14 +37,14 @@ export function RecurringScheduleManager() {
           id,
           student_id,
           day_of_week,
-          time,
+          time_of_day,
           is_active,
           students!inner (
             name
           )
         `)
         .order("day_of_week")
-        .order("time")
+        .order("time_of_day")
 
       if (error) {
         console.error("[v0] Ошибка загрузки расписаний:", error)
@@ -55,7 +55,7 @@ export function RecurringScheduleManager() {
         id: schedule.id,
         student_id: schedule.student_id,
         day_of_week: schedule.day_of_week,
-        time: schedule.time,
+        time_of_day: schedule.time_of_day,
         is_active: schedule.is_active,
         student_name: schedule.students?.name || "Неизвестный ученик",
       }))
@@ -77,42 +77,14 @@ export function RecurringScheduleManager() {
     loadSchedules()
   }, [])
 
-  const handleDelete = async (scheduleId: string) => {
-    if (!confirm("Удалить это регулярное расписание? Все будущие уроки будут удалены.")) {
-      return
-    }
-
-    try {
-      const supabase = createClient()
-
-      const { error } = await supabase.from("recurring_schedules").delete().eq("id", scheduleId)
-
-      if (error) throw error
-
-      toast({
-        title: "Успешно",
-        description: "Регулярное расписание удалено",
-      })
-
-      loadSchedules()
-    } catch (error) {
-      console.error("[v0] Ошибка удаления расписания:", error)
-      toast({
-        title: "Ошибка",
-        description: "Не удалось удалить расписание",
-        variant: "destructive",
-      })
-    }
-  }
-
-  const handleEdit = (schedule: RecurringSchedule) => {
-    setSelectedSchedule(schedule)
+  const handleManageSchedule = (studentId: string, studentName: string) => {
+    setSelectedStudent({ id: studentId, name: studentName })
     setDialogOpen(true)
   }
 
   const handleDialogClose = () => {
     setDialogOpen(false)
-    setSelectedSchedule(null)
+    setSelectedStudent(null)
     loadSchedules()
   }
 
@@ -127,6 +99,20 @@ export function RecurringScheduleManager() {
     )
   }
 
+  const schedulesByStudent = schedules.reduce(
+    (acc, schedule) => {
+      if (!acc[schedule.student_id]) {
+        acc[schedule.student_id] = {
+          studentName: schedule.student_name,
+          schedules: [],
+        }
+      }
+      acc[schedule.student_id].schedules.push(schedule)
+      return acc
+    },
+    {} as Record<string, { studentName: string; schedules: RecurringSchedule[] }>,
+  )
+
   return (
     <>
       <Card>
@@ -134,7 +120,7 @@ export function RecurringScheduleManager() {
           <div className="flex items-center justify-between">
             <div>
               <CardTitle>Регулярное расписание</CardTitle>
-              <CardDescription>Управление повторяющимися уроками</CardDescription>
+              <CardDescription>Управление повторяющимися уроками всех учеников</CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -146,47 +132,52 @@ export function RecurringScheduleManager() {
               <p className="text-sm">Создайте расписание в разделе "Календарь"</p>
             </div>
           ) : (
-            <div className="space-y-3">
-              {schedules.map((schedule) => (
-                <div
-                  key={schedule.id}
-                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-muted/50 transition-colors"
-                >
-                  <div className="flex items-center gap-4 flex-1 min-w-0">
-                    <div className="flex-1 min-w-0">
-                      <div className="font-medium truncate">{schedule.student_name}</div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground flex-wrap">
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {DAYS[schedule.day_of_week]}
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {schedule.time}
-                        </span>
-                      </div>
+            <div className="space-y-4">
+              {Object.entries(schedulesByStudent).map(([studentId, { studentName, schedules: studentSchedules }]) => (
+                <Card key={studentId} className="border-2">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-lg">{studentName}</h3>
+                      <Button size="sm" onClick={() => handleManageSchedule(studentId, studentName)}>
+                        <Edit className="h-4 w-4 mr-1" />
+                        Управление
+                      </Button>
                     </div>
-                    <Badge variant={schedule.is_active ? "default" : "secondary"}>
-                      {schedule.is_active ? "Активно" : "Неактивно"}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center gap-2 ml-4">
-                    <Button size="sm" variant="ghost" onClick={() => handleEdit(schedule)}>
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    <Button size="sm" variant="ghost" onClick={() => handleDelete(schedule.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                    <div className="space-y-2">
+                      {studentSchedules.map((schedule) => (
+                        <div key={schedule.id} className="flex items-center justify-between p-3 bg-muted/50 rounded-lg">
+                          <div className="flex items-center gap-3">
+                            <div className="flex items-center gap-2 text-sm">
+                              <Calendar className="h-4 w-4 text-muted-foreground" />
+                              <span className="font-medium">{DAYS[schedule.day_of_week]}</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-sm">
+                              <Clock className="h-4 w-4 text-muted-foreground" />
+                              <span>{schedule.time_of_day}</span>
+                            </div>
+                          </div>
+                          <Badge variant={schedule.is_active ? "default" : "secondary"}>
+                            {schedule.is_active ? "Активно" : "Неактивно"}
+                          </Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
 
-      {selectedSchedule && (
-        <ManageRecurringScheduleDialog schedule={selectedSchedule} open={dialogOpen} onOpenChange={handleDialogClose} />
+      {selectedStudent && (
+        <ManageRecurringScheduleDialog
+          open={dialogOpen}
+          onOpenChange={handleDialogClose}
+          studentId={selectedStudent.id}
+          studentName={selectedStudent.name}
+          onScheduleUpdated={loadSchedules}
+        />
       )}
     </>
   )

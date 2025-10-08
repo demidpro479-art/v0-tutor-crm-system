@@ -192,6 +192,44 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
     }
   }
 
+  const handleRegenerateAccount = async () => {
+    if (!confirm("Перегенерировать учетную запись? Старые данные для входа станут недействительными.")) {
+      return
+    }
+
+    setLoading(true)
+
+    try {
+      const supabase = createClient()
+
+      // Удаляем старый аккаунт если есть
+      if (student.has_account) {
+        const { error: deleteError } = await supabase
+          .from("students")
+          .update({
+            student_login: null,
+            student_password: null,
+            auth_user_id: null,
+          })
+          .eq("id", student.id)
+
+        if (deleteError) throw deleteError
+      }
+
+      // Создаем новый аккаунт
+      await handleCreateAccount()
+    } catch (error) {
+      console.error("[v0] Ошибка перегенерации аккаунта:", error)
+      toast({
+        title: "Ошибка",
+        description: "Не удалось перегенерировать учетную запись",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const copyToClipboard = async (text: string, type: "login" | "password") => {
     try {
       await navigator.clipboard.writeText(text)
@@ -235,12 +273,19 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <h4 className="font-medium">Учетная запись ученика</h4>
-              {!student.has_account && (
-                <Button size="sm" onClick={handleCreateAccount} disabled={loading}>
-                  <UserPlus className="h-4 w-4 mr-1" />
-                  Создать аккаунт
-                </Button>
-              )}
+              <div className="flex gap-2">
+                {!student.has_account ? (
+                  <Button size="sm" onClick={handleCreateAccount} disabled={loading}>
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Создать аккаунт
+                  </Button>
+                ) : (
+                  <Button size="sm" variant="outline" onClick={handleRegenerateAccount} disabled={loading}>
+                    <UserPlus className="h-4 w-4 mr-1" />
+                    Перегенерировать
+                  </Button>
+                )}
+              </div>
             </div>
 
             {student.has_account && student.student_login && student.student_password && (

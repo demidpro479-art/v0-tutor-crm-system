@@ -82,7 +82,7 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
           original_time: formData.time,
           duration_minutes: Number.parseInt(formData.duration_minutes),
           status: formData.status,
-          price: Number.parseFloat(formData.price) || null,
+          price: formData.price ? Number.parseFloat(formData.price) : null,
           notes: formData.notes || null,
           grade: formData.grade ? Number.parseInt(formData.grade) : null,
           homework: formData.homework || null,
@@ -97,6 +97,7 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
       })
 
       onLessonUpdated()
+      onOpenChange(false)
     } catch (error) {
       console.error("Ошибка обновления урока:", error)
       toast({

@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Calendar, BookOpen, TrendingUp, Award, Clock, CheckCircle2, XCircle, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useRouter } from "next/navigation"
+import { Input } from "@/components/ui/input"
 import {
   LineChart,
   Line,
@@ -57,12 +58,35 @@ export function StudentDashboard({
   const [student, setStudent] = useState<StudentData | null>(initialStudentData || null)
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
+  const [showNicknameDialog, setShowNicknameDialog] = useState(false)
+  const [nickname, setNickname] = useState(profile.full_name || "")
   const router = useRouter()
   const supabase = createClient()
 
   useEffect(() => {
     loadData()
+    if (!profile.full_name) {
+      setShowNicknameDialog(true)
+    }
   }, [])
+
+  async function handleSetNickname() {
+    if (!nickname.trim()) return
+
+    try {
+      const { error } = await supabase.rpc("set_student_nickname", {
+        p_user_id: userId,
+        p_nickname: nickname.trim(),
+      })
+
+      if (error) throw error
+
+      setShowNicknameDialog(false)
+      window.location.reload()
+    } catch (error) {
+      console.error("[v0] Ошибка установки никнейма:", error)
+    }
+  }
 
   async function loadData() {
     if (!student && profile.student_id) {
@@ -95,7 +119,6 @@ export function StudentDashboard({
 
   function formatActualTime(scheduledAt: string): string {
     const date = new Date(scheduledAt)
-    // Вычитаем 2 часа для отображения фактического времени
     date.setHours(date.getHours() - 2)
     return date.toLocaleString("ru-RU", {
       weekday: "short",
@@ -105,6 +128,8 @@ export function StudentDashboard({
       minute: "2-digit",
     })
   }
+
+  const displayName = profile.full_name || student?.name || "Ученик"
 
   if (loading) {
     return (
@@ -132,7 +157,6 @@ export function StudentDashboard({
     )
   }
 
-  // Статистика
   const completedLessons = lessons.filter((l) => l.status === "completed")
   const missedLessons = lessons.filter((l) => l.status === "missed")
   const upcomingLessons = lessons.filter((l) => l.status === "scheduled" && new Date(l.scheduled_at) > new Date())
@@ -144,7 +168,6 @@ export function StudentDashboard({
         ).toFixed(1)
       : "—"
 
-  // Данные для графика частоты уроков (последние 8 недель)
   const weeklyData = Array.from({ length: 8 }, (_, i) => {
     const weekStart = new Date()
     weekStart.setDate(weekStart.getDate() - (7 - i) * 7)
@@ -162,7 +185,6 @@ export function StudentDashboard({
     }
   })
 
-  // Данные для диаграммы статусов
   const statusData = [
     { name: "Проведено", value: completedLessons.length, color: "#10b981" },
     { name: "Пропущено", value: missedLessons.length, color: "#ef4444" },
@@ -171,15 +193,32 @@ export function StudentDashboard({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
-      {/* Мобильная шапка */}
+      {showNicknameDialog && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full">
+            <h2 className="text-xl font-bold mb-4">Добро пожаловать!</h2>
+            <p className="text-gray-600 mb-4">Установите свой никнейм для личного кабинета</p>
+            <Input
+              value={nickname}
+              onChange={(e) => setNickname(e.target.value)}
+              placeholder="Введите никнейм"
+              className="mb-4"
+            />
+            <Button onClick={handleSetNickname} disabled={!nickname.trim()} className="w-full">
+              Сохранить
+            </Button>
+          </div>
+        </div>
+      )}
+
       <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200 px-3 py-3 sm:px-4 md:px-6">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm sm:text-base shrink-0">
-              {student.name.charAt(0)}
+              {displayName.charAt(0)}
             </div>
             <div className="hidden sm:block min-w-0">
-              <h2 className="font-semibold text-gray-900 truncate">{student.name}</h2>
+              <h2 className="font-semibold text-gray-900 truncate">{displayName}</h2>
               <p className="text-xs sm:text-sm text-gray-500 truncate">{profile.email}</p>
             </div>
           </div>
@@ -195,21 +234,16 @@ export function StudentDashboard({
       </header>
 
       <main className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8 space-y-4 sm:space-y-6">
-        {/* Приветствие - мобильная версия */}
         <div className="sm:hidden">
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">Привет, {student.name.split(" ")[0]}! 👋</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">Привет, {displayName.split(" ")[0]}! 👋</h1>
           <p className="text-gray-600">Твоя статистика обучения</p>
         </div>
 
-        {/* Приветствие - десктоп */}
         <div className="hidden sm:block">
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            Привет, {student.name.split(" ")[0]}! 👋
-          </h1>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">Привет, {displayName.split(" ")[0]}! 👋</h1>
           <p className="text-lg text-gray-600">Твоя статистика обучения</p>
         </div>
 
-        {/* Быстрая статистика */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
           <Card className="bg-gradient-to-br from-blue-500 to-blue-600 text-white border-0 shadow-lg">
             <CardContent className="p-4 md:p-6">
@@ -252,7 +286,6 @@ export function StudentDashboard({
           </Card>
         </div>
 
-        {/* Графики */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
           <Card className="shadow-lg">
             <CardHeader className="pb-3">
@@ -317,7 +350,6 @@ export function StudentDashboard({
           </Card>
         </div>
 
-        {/* Ближайшие уроки */}
         <Card className="shadow-lg">
           <CardHeader className="px-4 py-3 sm:p-6">
             <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2">
@@ -355,7 +387,6 @@ export function StudentDashboard({
           </CardContent>
         </Card>
 
-        {/* История уроков с оценками */}
         <Card className="shadow-lg">
           <CardHeader className="px-4 py-3 sm:p-6">
             <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2">

@@ -33,19 +33,30 @@ export function RecurringScheduleManager() {
 
       const { data, error } = await supabase
         .from("recurring_schedules")
-        .select(
-          `
-          *,
-          students (name)
-        `,
-        )
+        .select(`
+          id,
+          student_id,
+          day_of_week,
+          time,
+          is_active,
+          students!inner (
+            name
+          )
+        `)
         .order("day_of_week")
         .order("time")
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Ошибка загрузки расписаний:", error)
+        throw error
+      }
 
-      const formattedData = data.map((schedule) => ({
-        ...schedule,
+      const formattedData = data.map((schedule: any) => ({
+        id: schedule.id,
+        student_id: schedule.student_id,
+        day_of_week: schedule.day_of_week,
+        time: schedule.time,
+        is_active: schedule.is_active,
         student_name: schedule.students?.name || "Неизвестный ученик",
       }))
 

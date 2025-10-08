@@ -1,14 +1,16 @@
-import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { NextResponse } from "next/server"
 
 export async function POST(request: Request) {
   try {
     const { studentId, login, password, studentName } = await request.json()
 
-    const supabase = await createClient()
+    console.log("[v0] Создание аккаунта для ученика:", { studentId, login, studentName })
+
+    const supabase = createAdminClient()
     const studentEmail = `${login}@student.tutorcrm.local`
 
-    // Создаем Supabase аккаунт через service role
+    // Создаем Supabase аккаунт
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: studentEmail,
       password: password,
@@ -24,6 +26,8 @@ export async function POST(request: Request) {
       console.error("[v0] Ошибка создания Supabase аккаунта:", authError)
       return NextResponse.json({ error: authError.message }, { status: 400 })
     }
+
+    console.log("[v0] Аккаунт успешно создан:", authData.user.id)
 
     return NextResponse.json({ success: true, authData })
   } catch (error) {

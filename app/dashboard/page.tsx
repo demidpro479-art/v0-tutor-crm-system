@@ -4,6 +4,7 @@ import { StudentsOverview } from "@/components/students-overview"
 import { QuickStats } from "@/components/quick-stats"
 import { LessonAutoProcessor } from "@/components/lesson-auto-processor"
 import { Navigation } from "@/components/navigation"
+import { RecurringScheduleManager } from "@/components/recurring-schedule-manager"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -27,6 +28,7 @@ export default async function DashboardPage() {
           <div className="space-y-8">
             <QuickStats />
             <LessonAutoProcessor />
+            <RecurringScheduleManager />
             <StudentsOverview />
           </div>
         </div>

@@ -142,23 +142,49 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
     try {
       const supabase = createClient()
 
-      const { data, error } = await supabase.rpc("create_student_account", {
+      const { data: accountData, error: accountError } = await supabase.rpc("create_student_account", {
         p_student_id: student.id,
       })
 
-      if (error) throw error
+      if (accountError) throw accountError
+
+      const login = accountData[0].login
+      const password = accountData[0].password
+
+      console.log("[v0] Создание Supabase аккаунта через API:", { login, password })
+
+      const response = await fetch("/api/create-student-account", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          studentId: student.id,
+          login: login,
+          password: password,
+          studentName: student.name,
+        }),
+      })
+
+      const result = await response.json()
+
+      if (!response.ok) {
+        throw new Error(result.error || "Не удалось создать аккаунт")
+      }
+
+      console.log("[v0] Аккаунт успешно создан")
 
       toast({
         title: "Учетная запись создана",
-        description: `Логин: ${data[0].login}, Пароль: ${data[0].password}`,
+        description: `Логин: ${login}, Пароль: ${password}`,
       })
 
       onStudentUpdated()
     } catch (error) {
-      console.error("Ошибка создания учетной записи:", error)
+      console.error("[v0] Ошибка создания учетной записи:", error)
       toast({
         title: "Ошибка",
-        description: "Не удалось создать учетную запись",
+        description: error instanceof Error ? error.message : "Не удалось создать учетную запись",
         variant: "destructive",
       })
     } finally {

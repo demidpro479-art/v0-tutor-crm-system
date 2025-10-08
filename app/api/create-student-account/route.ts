@@ -10,7 +10,6 @@ export async function POST(request: Request) {
     const supabase = createAdminClient()
     const studentEmail = `${login}@student.tutorcrm.local`
 
-    // Создаем Supabase аккаунт
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: studentEmail,
       password: password,
@@ -29,7 +28,19 @@ export async function POST(request: Request) {
 
     console.log("[v0] Аккаунт успешно создан:", authData.user.id)
 
-    return NextResponse.json({ success: true, authData })
+    const { error: updateError } = await supabase
+      .from("students")
+      .update({
+        auth_user_id: authData.user.id,
+        has_account: true,
+      })
+      .eq("id", studentId)
+
+    if (updateError) {
+      console.error("[v0] Ошибка обновления записи ученика:", updateError)
+    }
+
+    return NextResponse.json({ success: true, userId: authData.user.id })
   } catch (error) {
     console.error("[v0] Ошибка в API:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

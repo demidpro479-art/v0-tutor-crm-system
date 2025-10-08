@@ -45,8 +45,16 @@ interface Lesson {
   duration_minutes: number
 }
 
-export function StudentDashboard({ userId, profile }: { userId: string; profile: Profile }) {
-  const [student, setStudent] = useState<StudentData | null>(null)
+export function StudentDashboard({
+  userId,
+  profile,
+  studentData: initialStudentData,
+}: {
+  userId: string
+  profile: Profile
+  studentData?: StudentData
+}) {
+  const [student, setStudent] = useState<StudentData | null>(initialStudentData || null)
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -57,27 +65,24 @@ export function StudentDashboard({ userId, profile }: { userId: string; profile:
   }, [])
 
   async function loadData() {
-    if (!profile.student_id) {
-      setLoading(false)
-      return
+    if (!student && profile.student_id) {
+      const { data: studentData } = await supabase.from("students").select("*").eq("id", profile.student_id).single()
+
+      if (studentData) {
+        setStudent(studentData)
+      }
     }
 
-    // Загружаем данные ученика
-    const { data: studentData } = await supabase.from("students").select("*").eq("id", profile.student_id).single()
+    if (profile.student_id) {
+      const { data: lessonsData } = await supabase
+        .from("lessons")
+        .select("*")
+        .eq("student_id", profile.student_id)
+        .order("scheduled_at", { ascending: false })
 
-    if (studentData) {
-      setStudent(studentData)
-    }
-
-    // Загружаем уроки
-    const { data: lessonsData } = await supabase
-      .from("lessons")
-      .select("*")
-      .eq("student_id", profile.student_id)
-      .order("scheduled_at", { ascending: false })
-
-    if (lessonsData) {
-      setLessons(lessonsData)
+      if (lessonsData) {
+        setLessons(lessonsData)
+      }
     }
 
     setLoading(false)

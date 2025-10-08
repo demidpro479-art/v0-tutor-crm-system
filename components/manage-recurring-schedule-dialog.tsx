@@ -92,33 +92,18 @@ export function ManageRecurringScheduleDialog({
     const supabase = createClient()
 
     try {
-      // Обновляем расписание
-      const { error: updateError } = await supabase
-        .from("recurring_schedules")
-        .update({
-          day_of_week: editData.day_of_week,
-          time_of_day: editData.time_of_day,
-          duration_minutes: editData.duration_minutes,
-        })
-        .eq("id", scheduleId)
-
-      if (updateError) throw updateError
-
-      // Обновляем все будущие уроки этого расписания
-      const { error: lessonsError } = await supabase.rpc("update_recurring_lessons", {
+      const { error: updateError } = await supabase.rpc("update_recurring_schedule_and_lessons", {
         p_schedule_id: scheduleId,
         p_new_day: editData.day_of_week,
         p_new_time: editData.time_of_day,
         p_new_duration: editData.duration_minutes,
       })
 
-      if (lessonsError) {
-        console.error("Ошибка обновления уроков:", lessonsError)
-      }
+      if (updateError) throw updateError
 
       toast({
         title: "Успешно!",
-        description: "Расписание и все будущие уроки обновлены",
+        description: "Расписание обновлено, старые уроки удалены и созданы новые",
       })
 
       setEditingId(null)

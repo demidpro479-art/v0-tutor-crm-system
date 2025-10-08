@@ -5,6 +5,7 @@ import { QuickStats } from "@/components/quick-stats"
 import { LessonAutoProcessor } from "@/components/lesson-auto-processor"
 import { Navigation } from "@/components/navigation"
 import { RecurringScheduleManager } from "@/components/recurring-schedule-manager"
+import { UndoActionPanel } from "@/components/undo-action-panel"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -26,6 +27,7 @@ export default async function DashboardPage() {
           </div>
 
           <div className="space-y-8">
+            <UndoActionPanel />
             <QuickStats />
             <LessonAutoProcessor />
             <RecurringScheduleManager />

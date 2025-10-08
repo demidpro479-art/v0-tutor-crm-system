@@ -21,6 +21,7 @@ interface Student {
   hourly_rate: number
   is_active: boolean
   created_at: string
+  deleted_at: string | null
 }
 
 export function StudentsOverview() {
@@ -40,7 +41,11 @@ export function StudentsOverview() {
     try {
       console.log("[v0] Загрузка учеников...")
 
-      const { data, error } = await supabase.from("students").select("*").order("created_at", { ascending: false })
+      const { data, error } = await supabase
+        .from("students")
+        .select("*")
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
 
       if (error) {
         console.error("[v0] Ошибка загрузки учеников:", error)

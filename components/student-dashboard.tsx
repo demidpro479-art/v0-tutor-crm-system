@@ -88,6 +88,19 @@ export function StudentDashboard({ userId, profile }: { userId: string; profile:
     router.push("/auth/login")
   }
 
+  function formatActualTime(scheduledAt: string): string {
+    const date = new Date(scheduledAt)
+    // Вычитаем 2 часа для отображения фактического времени
+    date.setHours(date.getHours() - 2)
+    return date.toLocaleString("ru-RU", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -154,24 +167,29 @@ export function StudentDashboard({ userId, profile }: { userId: string; profile:
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50">
       {/* Мобильная шапка */}
-      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200 px-4 py-3 md:px-6">
+      <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-200 px-3 py-3 sm:px-4 md:px-6">
         <div className="flex items-center justify-between max-w-7xl mx-auto">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold text-sm sm:text-base shrink-0">
               {student.name.charAt(0)}
             </div>
-            <div className="hidden sm:block">
-              <h2 className="font-semibold text-gray-900">{student.name}</h2>
-              <p className="text-sm text-gray-500">{profile.email}</p>
+            <div className="hidden sm:block min-w-0">
+              <h2 className="font-semibold text-gray-900 truncate">{student.name}</h2>
+              <p className="text-xs sm:text-sm text-gray-500 truncate">{profile.email}</p>
             </div>
           </div>
-          <Button onClick={handleLogout} variant="outline" size="sm" className="shrink-0 bg-transparent">
+          <Button
+            onClick={handleLogout}
+            variant="outline"
+            size="sm"
+            className="shrink-0 bg-transparent text-xs sm:text-sm px-2 sm:px-4"
+          >
             Выйти
           </Button>
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6 md:px-6 md:py-8 space-y-6">
+      <main className="max-w-7xl mx-auto px-3 py-4 sm:px-4 sm:py-6 md:px-6 md:py-8 space-y-4 sm:space-y-6">
         {/* Приветствие - мобильная версия */}
         <div className="sm:hidden">
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Привет, {student.name.split(" ")[0]}! 👋</h1>
@@ -296,39 +314,33 @@ export function StudentDashboard({ userId, profile }: { userId: string; profile:
 
         {/* Ближайшие уроки */}
         <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-lg md:text-xl flex items-center gap-2">
-              <Clock className="w-5 h-5 text-blue-500" />
+          <CardHeader className="px-4 py-3 sm:p-6">
+            <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
               Ближайшие уроки
             </CardTitle>
-            <CardDescription className="text-sm">Запланированные занятия</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Запланированные занятия</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pb-4 sm:p-6 sm:pt-0">
             {upcomingLessons.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <AlertCircle className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Нет запланированных уроков</p>
+              <div className="text-center py-6 sm:py-8 text-gray-500">
+                <AlertCircle className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 opacity-50" />
+                <p className="text-sm sm:text-base">Нет запланированных уроков</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {upcomingLessons.slice(0, 5).map((lesson) => (
                   <div
                     key={lesson.id}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3 md:p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-100 gap-2"
+                    className="flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-lg border border-blue-100 gap-2"
                   >
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-gray-900 truncate">{lesson.title || "Урок"}</h4>
-                      <p className="text-sm text-gray-600">
-                        {new Date(lesson.scheduled_at).toLocaleString("ru-RU", {
-                          weekday: "short",
-                          day: "numeric",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit",
-                        })}
-                      </p>
+                      <h4 className="font-semibold text-sm sm:text-base text-gray-900 truncate">
+                        {lesson.title || "Урок"}
+                      </h4>
+                      <p className="text-xs sm:text-sm text-gray-600">{formatActualTime(lesson.scheduled_at)}</p>
                     </div>
-                    <Badge variant="secondary" className="self-start sm:self-center shrink-0">
+                    <Badge variant="secondary" className="self-start sm:self-center shrink-0 text-xs">
                       {lesson.duration_minutes} мин
                     </Badge>
                   </div>
@@ -340,42 +352,36 @@ export function StudentDashboard({ userId, profile }: { userId: string; profile:
 
         {/* История уроков с оценками */}
         <Card className="shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-lg md:text-xl flex items-center gap-2">
-              <Award className="w-5 h-5 text-blue-500" />
+          <CardHeader className="px-4 py-3 sm:p-6">
+            <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2">
+              <Award className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
               История уроков
             </CardTitle>
-            <CardDescription className="text-sm">Оценки и домашние задания</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Оценки и домашние задания</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pb-4 sm:p-6 sm:pt-0">
             {completedLessons.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                <p>Пока нет проведенных уроков</p>
+              <div className="text-center py-6 sm:py-8 text-gray-500">
+                <BookOpen className="w-10 h-10 sm:w-12 sm:h-12 mx-auto mb-2 sm:mb-3 opacity-50" />
+                <p className="text-sm sm:text-base">Пока нет проведенных уроков</p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {completedLessons.slice(0, 10).map((lesson) => (
                   <div
                     key={lesson.id}
-                    className="p-3 md:p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
+                    className="p-3 sm:p-4 bg-white rounded-lg border border-gray-200 hover:border-blue-300 transition-colors"
                   >
                     <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2 mb-2">
                       <div className="flex-1 min-w-0">
-                        <h4 className="font-semibold text-gray-900 truncate">{lesson.title || "Урок"}</h4>
-                        <p className="text-sm text-gray-600">
-                          {new Date(lesson.scheduled_at).toLocaleString("ru-RU", {
-                            day: "numeric",
-                            month: "long",
-                            year: "numeric",
-                            hour: "2-digit",
-                            minute: "2-digit",
-                          })}
-                        </p>
+                        <h4 className="font-semibold text-sm sm:text-base text-gray-900 truncate">
+                          {lesson.title || "Урок"}
+                        </h4>
+                        <p className="text-xs sm:text-sm text-gray-600">{formatActualTime(lesson.scheduled_at)}</p>
                       </div>
                       {lesson.grade && (
                         <Badge
-                          className={`shrink-0 ${
+                          className={`shrink-0 text-xs ${
                             lesson.grade >= 4
                               ? "bg-green-500 hover:bg-green-600"
                               : lesson.grade === 3
@@ -388,7 +394,7 @@ export function StudentDashboard({ userId, profile }: { userId: string; profile:
                       )}
                     </div>
                     {lesson.homework && (
-                      <div className="mt-2 p-2 md:p-3 bg-blue-50 rounded text-sm">
+                      <div className="mt-2 p-2 sm:p-3 bg-blue-50 rounded text-sm sm:text-sm">
                         <p className="font-medium text-blue-900 mb-1">Домашнее задание:</p>
                         <p className="text-blue-800 whitespace-pre-wrap break-words">{lesson.homework}</p>
                       </div>

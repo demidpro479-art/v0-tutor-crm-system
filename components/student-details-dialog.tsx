@@ -63,6 +63,8 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
   const [lessonsToDeduct, setLessonsToDeduct] = useState("")
   const [deductReason, setDeductReason] = useState("")
   const [showResetDialog, setShowResetDialog] = useState(false)
+  const [showEditTotal, setShowEditTotal] = useState(false)
+  const [newTotalLessons, setNewTotalLessons] = useState(student.total_paid_lessons.toString())
   const { toast } = useToast()
   const [formData, setFormData] = useState({
     name: student.name,
@@ -317,6 +319,45 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
     }
   }
 
+  const handleUpdateTotalLessons = async () => {
+    setLoading(true)
+
+    try {
+      const supabase = createClient()
+
+      const newTotal = Number.parseInt(newTotalLessons)
+      if (isNaN(newTotal) || newTotal < 0) {
+        throw new Error("Введите корректное число")
+      }
+
+      const { error } = await supabase
+        .from("students")
+        .update({
+          total_paid_lessons: newTotal,
+        })
+        .eq("id", student.id)
+
+      if (error) throw error
+
+      toast({
+        title: "Обновлено",
+        description: `Общее количество оплаченных уроков изменено на ${newTotal}`,
+      })
+
+      setShowEditTotal(false)
+      onStudentUpdated()
+    } catch (error) {
+      console.error("Ошибка обновления количества уроков:", error)
+      toast({
+        title: "Ошибка",
+        description: error instanceof Error ? error.message : "Не удалось обновить количество уроков",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const copyToClipboard = async (text: string, type: "login" | "password") => {
     try {
       await navigator.clipboard.writeText(text)
@@ -350,12 +391,49 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
               <div className="text-center p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 animate-slide-in">
                 <div className="text-3xl font-bold text-primary">{student.total_paid_lessons}</div>
                 <div className="text-sm text-muted-foreground mt-1">Всего оплачено</div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="mt-2 h-6 text-xs"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setShowEditTotal(!showEditTotal)
+                    setNewTotalLessons(student.total_paid_lessons.toString())
+                  }}
+                >
+                  Изменить
+                </Button>
               </div>
               <div className="text-center p-4 bg-gradient-to-br from-accent/10 to-accent/5 rounded-xl border border-accent/20 animate-slide-in">
                 <div className="text-3xl font-bold text-accent">{student.remaining_lessons}</div>
                 <div className="text-sm text-muted-foreground mt-1">Осталось уроков</div>
               </div>
             </div>
+
+            {showEditTotal && (
+              <div className="p-4 bg-muted/50 rounded-lg space-y-3 animate-slide-in">
+                <Label htmlFor="total-lessons">Общее количество оплаченных уроков</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="total-lessons"
+                    type="number"
+                    min="0"
+                    value={newTotalLessons}
+                    onChange={(e) => setNewTotalLessons(e.target.value)}
+                    placeholder="Введите количество"
+                  />
+                  <Button onClick={handleUpdateTotalLessons} disabled={loading}>
+                    Сохранить
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowEditTotal(false)}>
+                    Отмена
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Изменение этого значения пересчитает количество оставшихся уроков
+                </p>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -415,7 +493,14 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
                     <Plus className="h-4 w-4 mr-1" />
                     Добавить
                   </Button>
-                  <Button size="sm" variant="destructive" onClick={() => setShowResetDialog(true)}>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowResetDialog(true)
+                    }}
+                  >
                     <RotateCcw className="h-4 w-4 mr-1" />
                     Обнулить
                   </Button>
@@ -583,7 +668,7 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
       </Dialog>
 
       <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Обнулить все уроки?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -592,8 +677,14 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Отмена</AlertDialogCancel>
-            <AlertDialogAction onClick={handleResetLessons} className="bg-destructive text-destructive-foreground">
+            <AlertDialogCancel onClick={(e) => e.stopPropagation()}>Отмена</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.stopPropagation()
+                handleResetLessons()
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
               Обнулить
             </AlertDialogAction>
           </AlertDialogFooter>

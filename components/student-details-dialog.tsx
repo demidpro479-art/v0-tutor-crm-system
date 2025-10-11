@@ -16,8 +16,18 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { createClient } from "@/lib/supabase/client"
-import { Plus, Trash2, UserPlus, Copy, Check } from "lucide-react"
+import { Plus, Trash2, UserPlus, Copy, Check, Minus, RotateCcw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface Student {
   id: string
@@ -49,6 +59,10 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
   const [paymentAmount, setPaymentAmount] = useState("")
   const [copiedLogin, setCopiedLogin] = useState(false)
   const [copiedPassword, setCopiedPassword] = useState(false)
+  const [showDeductLessons, setShowDeductLessons] = useState(false)
+  const [lessonsToDeduct, setLessonsToDeduct] = useState("")
+  const [deductReason, setDeductReason] = useState("")
+  const [showResetDialog, setShowResetDialog] = useState(false)
   const { toast } = useToast()
   const [formData, setFormData] = useState({
     name: student.name,
@@ -109,6 +123,11 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
       onStudentUpdated()
     } catch (error) {
       console.error("Ошибка добавления уроков:", error)
+      toast({
+        title: "Ошибка",
+        description: error instanceof Error ? error.message : "Не удалось добавить уроки",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -230,6 +249,74 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
     }
   }
 
+  const handleDeductLessons = async () => {
+    if (!lessonsToDeduct) return
+
+    setLoading(true)
+
+    try {
+      const supabase = createClient()
+
+      const { data, error } = await supabase.rpc("deduct_lessons", {
+        p_student_id: student.id,
+        p_lessons_count: Number.parseInt(lessonsToDeduct),
+        p_reason: deductReason || "Списание уроков",
+      })
+
+      if (error) throw error
+
+      toast({
+        title: "Уроки списаны",
+        description: `Списано ${lessonsToDeduct} уроков`,
+      })
+
+      setLessonsToDeduct("")
+      setDeductReason("")
+      setShowDeductLessons(false)
+      onStudentUpdated()
+    } catch (error) {
+      console.error("Ошибка списания уроков:", error)
+      toast({
+        title: "Ошибка",
+        description: error instanceof Error ? error.message : "Не удалось списать уроки",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleResetLessons = async () => {
+    setLoading(true)
+
+    try {
+      const supabase = createClient()
+
+      const { error } = await supabase.rpc("reset_student_lessons", {
+        p_student_id: student.id,
+      })
+
+      if (error) throw error
+
+      toast({
+        title: "Уроки обнулены",
+        description: "Все уроки ученика обнулены",
+      })
+
+      setShowResetDialog(false)
+      onStudentUpdated()
+    } catch (error) {
+      console.error("Ошибка обнуления уроков:", error)
+      toast({
+        title: "Ошибка",
+        description: "Не удалось обнулить уроки",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const copyToClipboard = async (text: string, type: "login" | "password") => {
     try {
       await navigator.clipboard.writeText(text)
@@ -250,201 +337,268 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>Информация об ученике</DialogTitle>
-          <DialogDescription>Просмотр и редактирование данных ученика</DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Информация об ученике</DialogTitle>
+            <DialogDescription>Просмотр и редактирование данных ученика</DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-6">
-          {/* Статистика */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <div className="text-2xl font-bold">{student.total_paid_lessons}</div>
-              <div className="text-sm text-muted-foreground">Всего оплачено</div>
-            </div>
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <div className="text-2xl font-bold">{student.remaining_lessons}</div>
-              <div className="text-sm text-muted-foreground">Осталось уроков</div>
-            </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium">Учетная запись ученика</h4>
-              <div className="flex gap-2">
-                {!student.has_account ? (
-                  <Button size="sm" onClick={handleCreateAccount} disabled={loading}>
-                    <UserPlus className="h-4 w-4 mr-1" />
-                    Создать аккаунт
-                  </Button>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={handleRegenerateAccount} disabled={loading}>
-                    <UserPlus className="h-4 w-4 mr-1" />
-                    Перегенерировать
-                  </Button>
-                )}
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="text-center p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 animate-slide-in">
+                <div className="text-3xl font-bold text-primary">{student.total_paid_lessons}</div>
+                <div className="text-sm text-muted-foreground mt-1">Всего оплачено</div>
+              </div>
+              <div className="text-center p-4 bg-gradient-to-br from-accent/10 to-accent/5 rounded-xl border border-accent/20 animate-slide-in">
+                <div className="text-3xl font-bold text-accent">{student.remaining_lessons}</div>
+                <div className="text-sm text-muted-foreground mt-1">Осталось уроков</div>
               </div>
             </div>
 
-            {student.has_account && student.student_login && student.student_password && (
-              <div className="p-4 bg-muted rounded-lg space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Логин</Label>
-                    <div className="font-mono font-medium">{student.student_login}</div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Учетная запись ученика</h4>
+                <div className="flex gap-2">
+                  {!student.has_account ? (
+                    <Button size="sm" onClick={handleCreateAccount} disabled={loading}>
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      Создать аккаунт
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" onClick={handleRegenerateAccount} disabled={loading}>
+                      <UserPlus className="h-4 w-4 mr-1" />
+                      Перегенерировать
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {student.has_account && student.student_login && student.student_password && (
+                <div className="p-4 bg-muted rounded-lg space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Логин</Label>
+                      <div className="font-mono font-medium">{student.student_login}</div>
+                    </div>
+                    <Button size="sm" variant="ghost" onClick={() => copyToClipboard(student.student_login!, "login")}>
+                      {copiedLogin ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => copyToClipboard(student.student_login!, "login")}>
-                    {copiedLogin ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <Label className="text-xs text-muted-foreground">Пароль</Label>
+                      <div className="font-mono font-medium">{student.student_password}</div>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => copyToClipboard(student.student_password!, "password")}
+                    >
+                      {copiedPassword ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="font-medium">Управление уроками</h4>
+                <div className="flex gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setShowDeductLessons(!showDeductLessons)}>
+                    <Minus className="h-4 w-4 mr-1" />
+                    Списать
+                  </Button>
+                  <Button size="sm" onClick={() => setShowAddLessons(!showAddLessons)}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Добавить
+                  </Button>
+                  <Button size="sm" variant="destructive" onClick={() => setShowResetDialog(true)}>
+                    <RotateCcw className="h-4 w-4 mr-1" />
+                    Обнулить
                   </Button>
                 </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Пароль</Label>
-                    <div className="font-mono font-medium">{student.student_password}</div>
+              </div>
+
+              {showDeductLessons && (
+                <div className="p-4 bg-muted/50 rounded-lg space-y-3 animate-slide-in">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="deduct-lessons">Количество уроков</Label>
+                      <Input
+                        id="deduct-lessons"
+                        type="number"
+                        min="1"
+                        max={student.remaining_lessons}
+                        value={lessonsToDeduct}
+                        onChange={(e) => setLessonsToDeduct(e.target.value)}
+                        placeholder="Введите количество"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="deduct-reason">Причина</Label>
+                      <Input
+                        id="deduct-reason"
+                        value={deductReason}
+                        onChange={(e) => setDeductReason(e.target.value)}
+                        placeholder="Необязательно"
+                      />
+                    </div>
                   </div>
                   <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => copyToClipboard(student.student_password!, "password")}
+                    onClick={handleDeductLessons}
+                    disabled={
+                      loading || !lessonsToDeduct || Number.parseInt(lessonsToDeduct) > student.remaining_lessons
+                    }
+                    className="w-full"
+                    variant="destructive"
                   >
-                    {copiedPassword ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    Списать {lessonsToDeduct} {lessonsToDeduct ? "уроков" : ""}
                   </Button>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
 
-          {/* Добавление уроков */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium">Управление уроками</h4>
-              <Button size="sm" onClick={() => setShowAddLessons(!showAddLessons)}>
-                <Plus className="h-4 w-4 mr-1" />
-                Добавить уроки
-              </Button>
+              {showAddLessons && (
+                <div className="p-4 bg-muted/50 rounded-lg space-y-3 animate-slide-in">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="lessons">Количество уроков</Label>
+                      <Input
+                        id="lessons"
+                        type="number"
+                        min="1"
+                        value={lessonsToAdd}
+                        onChange={(e) => setLessonsToAdd(e.target.value)}
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="amount">Сумма оплаты (₽)</Label>
+                      <Input
+                        id="amount"
+                        type="number"
+                        min="0"
+                        step="0.01"
+                        value={paymentAmount}
+                        onChange={(e) => setPaymentAmount(e.target.value)}
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Button
+                        onClick={handleAddLessons}
+                        disabled={loading || !lessonsToAdd || !paymentAmount}
+                        className="w-full"
+                      >
+                        Добавить уроки
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
-            {showAddLessons && (
-              <div className="grid grid-cols-2 gap-3">
+            <Separator />
+
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="active">Активный ученик</Label>
+                <Switch
+                  id="active"
+                  checked={formData.is_active}
+                  onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                />
+              </div>
+
+              <div className="grid gap-3">
                 <div>
-                  <Label htmlFor="lessons">Количество уроков</Label>
+                  <Label htmlFor="name">Имя</Label>
                   <Input
-                    id="lessons"
-                    type="number"
-                    min="1"
-                    value={lessonsToAdd}
-                    onChange={(e) => setLessonsToAdd(e.target.value)}
+                    id="name"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                   />
                 </div>
+
                 <div>
-                  <Label htmlFor="amount">Сумма оплаты (₽)</Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
-                    id="amount"
+                    id="email"
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="phone">Телефон</Label>
+                  <Input
+                    id="phone"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="hourly_rate">Стоимость урока (₽)</Label>
+                  <Input
+                    id="hourly_rate"
                     type="number"
                     min="0"
                     step="0.01"
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
+                    value={formData.hourly_rate}
+                    onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
                   />
                 </div>
-                <div className="col-span-2">
-                  <Button
-                    onClick={handleAddLessons}
-                    disabled={loading || !lessonsToAdd || !paymentAmount}
-                    className="w-full"
-                  >
-                    Добавить уроки
-                  </Button>
+
+                <div>
+                  <Label htmlFor="notes">Заметки</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+                    rows={3}
+                  />
                 </div>
               </div>
-            )}
-          </div>
-
-          <Separator />
-
-          {/* Форма редактирования */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="active">Активный ученик</Label>
-              <Switch
-                id="active"
-                checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-              />
-            </div>
-
-            <div className="grid gap-3">
-              <div>
-                <Label htmlFor="name">Имя</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="phone">Телефон</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="hourly_rate">Стоимость урока (₽)</Label>
-                <Input
-                  id="hourly_rate"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.hourly_rate}
-                  onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="notes">Заметки</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={3}
-                />
-              </div>
             </div>
           </div>
-        </div>
 
-        <DialogFooter className="flex justify-between">
-          <Button variant="destructive" onClick={handleDelete} disabled={loading}>
-            <Trash2 className="h-4 w-4 mr-2" />
-            Удалить
-          </Button>
+          <DialogFooter className="flex justify-between">
+            <Button variant="destructive" onClick={handleDelete} disabled={loading}>
+              <Trash2 className="h-4 w-4 mr-2" />
+              Удалить
+            </Button>
 
-          <div className="space-x-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleUpdate} disabled={loading}>
-              {loading ? "Сохранение..." : "Сохранить"}
-            </Button>
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+            <div className="space-x-2">
+              <Button variant="outline" onClick={() => onOpenChange(false)}>
+                Отмена
+              </Button>
+              <Button onClick={handleUpdate} disabled={loading}>
+                {loading ? "Сохранение..." : "Сохранить"}
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <AlertDialog open={showResetDialog} onOpenChange={setShowResetDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Обнулить все уроки?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Это действие обнулит все оплаченные уроки и удалит все запланированные занятия ученика. Проведенные уроки
+              останутся в истории. Это действие нельзя отменить.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Отмена</AlertDialogCancel>
+            <AlertDialogAction onClick={handleResetLessons} className="bg-destructive text-destructive-foreground">
+              Обнулить
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }

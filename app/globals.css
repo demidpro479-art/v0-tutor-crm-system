@@ -125,7 +125,7 @@
   }
 }
 
-/* Добавляем крутые анимации */
+/* Улучшенные анимации и переходы */
 @keyframes slideIn {
   from {
     opacity: 0;
@@ -156,6 +156,15 @@
   }
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
 .animate-slide-in {
   animation: slideIn 0.3s ease-out;
 }
@@ -168,11 +177,24 @@
   animation: pulse-soft 2s ease-in-out infinite;
 }
 
+.animate-shimmer {
+  animation: shimmer 2s linear infinite;
+  background: linear-gradient(to right, transparent 0%, rgba(255, 255, 255, 0.1) 50%, transparent 100%);
+  background-size: 1000px 100%;
+}
+
 /* Плавные переходы для всех интерактивных элементов */
 button,
 a,
-[role="button"] {
+[role="button"],
+input,
+select,
+textarea {
   transition: all 0.2s ease-in-out;
+}
+
+button:active {
+  transform: scale(0.98);
 }
 
 /* Улучшенные тени для карточек */
@@ -184,6 +206,12 @@ a,
 .card-enhanced:hover {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 6px 12px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
+}
+
+/* Градиентные фоны для статистики */
+.stat-card {
+  background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+  color: white;
 }
 
 /* Мобильная адаптация */
@@ -199,4 +227,42 @@ a,
   .mobile-text-sm {
     font-size: 0.875rem;
   }
+
+  /* Улучшенная адаптация для кнопок */
+  button {
+    min-height: 44px; /* Минимальная высота для удобного нажатия */
+  }
+
+  /* Адаптация для диалогов */
+  [role="dialog"] {
+    max-width: 95vw !important;
+    margin: 1rem;
+  }
+
+  /* Адаптация для форм */
+  input,
+  select,
+  textarea {
+    font-size: 16px; /* Предотвращает зум на iOS */
+  }
+}
+
+/* Улучшенные скроллбары */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }

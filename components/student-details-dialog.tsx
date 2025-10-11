@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { createClient } from "@/lib/supabase/client"
-import { Plus, Trash2, UserPlus, Copy, Check, Minus, RotateCcw } from "lucide-react"
+import { Plus, Trash2, Minus, RotateCcw, Edit2 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import {
   AlertDialog,
@@ -65,6 +65,8 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
   const [showResetDialog, setShowResetDialog] = useState(false)
   const [showEditTotal, setShowEditTotal] = useState(false)
   const [newTotalLessons, setNewTotalLessons] = useState(student.total_paid_lessons.toString())
+  const [showEditRemaining, setShowEditRemaining] = useState(false)
+  const [newRemainingLessons, setNewRemainingLessons] = useState(student.remaining_lessons.toString())
   const { toast } = useToast()
   const [formData, setFormData] = useState({
     name: student.name,
@@ -259,7 +261,7 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
     try {
       const supabase = createClient()
 
-      const { data, error } = await supabase.rpc("deduct_lessons", {
+      const { error } = await supabase.rpc("deduct_lessons", {
         p_student_id: student.id,
         p_lessons_count: Number.parseInt(lessonsToDeduct),
         p_reason: deductReason || "Списание уроков",
@@ -358,6 +360,43 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
     }
   }
 
+  const handleUpdateRemainingLessons = async () => {
+    setLoading(true)
+
+    try {
+      const supabase = createClient()
+
+      const newRemaining = Number.parseInt(newRemainingLessons)
+      if (isNaN(newRemaining) || newRemaining < 0) {
+        throw new Error("Введите корректное число")
+      }
+
+      const { error } = await supabase.rpc("update_remaining_lessons", {
+        p_student_id: student.id,
+        p_new_remaining: newRemaining,
+      })
+
+      if (error) throw error
+
+      toast({
+        title: "Обновлено",
+        description: `Количество оставшихся уроков изменено на ${newRemaining}`,
+      })
+
+      setShowEditRemaining(false)
+      onStudentUpdated()
+    } catch (error) {
+      console.error("Ошибка обновления количества уроков:", error)
+      toast({
+        title: "Ошибка",
+        description: error instanceof Error ? error.message : "Не удалось обновить количество уроков",
+        variant: "destructive",
+      })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const copyToClipboard = async (text: string, type: "login" | "password") => {
     try {
       await navigator.clipboard.writeText(text)
@@ -380,39 +419,66 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Информация об ученике</DialogTitle>
+            <DialogTitle className="text-2xl font-bold bg-gradient-to-r from-primary to-accent bg-clip-text text-transparent">
+              Информация об ученике
+            </DialogTitle>
             <DialogDescription>Просмотр и редактирование данных ученика</DialogDescription>
           </DialogHeader>
 
           <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="text-center p-4 bg-gradient-to-br from-primary/10 to-primary/5 rounded-xl border border-primary/20 animate-slide-in">
-                <div className="text-3xl font-bold text-primary">{student.total_paid_lessons}</div>
-                <div className="text-sm text-muted-foreground mt-1">Всего оплачено</div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="mt-2 h-6 text-xs"
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    setShowEditTotal(!showEditTotal)
-                    setNewTotalLessons(student.total_paid_lessons.toString())
-                  }}
-                >
-                  Изменить
-                </Button>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="relative group">
+                <div className="text-center p-6 bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 rounded-2xl border-2 border-primary/30 hover:border-primary/50 transition-all duration-300 hover:shadow-lg hover:shadow-primary/20 animate-slide-in">
+                  <div className="text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+                    {student.total_paid_lessons}
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-2 font-medium">Всего оплачено</div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="mt-3 h-8 text-xs hover:bg-primary/10 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowEditTotal(!showEditTotal)
+                      setNewTotalLessons(student.total_paid_lessons.toString())
+                    }}
+                  >
+                    <Edit2 className="h-3 w-3 mr-1" />
+                    Изменить
+                  </Button>
+                </div>
               </div>
-              <div className="text-center p-4 bg-gradient-to-br from-accent/10 to-accent/5 rounded-xl border border-accent/20 animate-slide-in">
-                <div className="text-3xl font-bold text-accent">{student.remaining_lessons}</div>
-                <div className="text-sm text-muted-foreground mt-1">Осталось уроков</div>
+
+              <div className="relative group">
+                <div className="text-center p-6 bg-gradient-to-br from-accent/20 via-accent/10 to-accent/5 rounded-2xl border-2 border-accent/30 hover:border-accent/50 transition-all duration-300 hover:shadow-lg hover:shadow-accent/20 animate-slide-in">
+                  <div className="text-4xl font-bold bg-gradient-to-r from-accent to-accent/70 bg-clip-text text-transparent">
+                    {student.remaining_lessons}
+                  </div>
+                  <div className="text-sm text-muted-foreground mt-2 font-medium">Осталось уроков</div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="mt-3 h-8 text-xs hover:bg-accent/10 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      setShowEditRemaining(!showEditRemaining)
+                      setNewRemainingLessons(student.remaining_lessons.toString())
+                    }}
+                  >
+                    <Edit2 className="h-3 w-3 mr-1" />
+                    Изменить
+                  </Button>
+                </div>
               </div>
             </div>
 
             {showEditTotal && (
-              <div className="p-4 bg-muted/50 rounded-lg space-y-3 animate-slide-in">
-                <Label htmlFor="total-lessons">Общее количество оплаченных уроков</Label>
+              <div className="p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl border border-primary/20 space-y-3 animate-slide-in">
+                <Label htmlFor="total-lessons" className="text-sm font-semibold">
+                  Общее количество оплаченных уроков
+                </Label>
                 <div className="flex gap-2">
                   <Input
                     id="total-lessons"
@@ -421,75 +487,67 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
                     value={newTotalLessons}
                     onChange={(e) => setNewTotalLessons(e.target.value)}
                     placeholder="Введите количество"
+                    className="flex-1"
                   />
-                  <Button onClick={handleUpdateTotalLessons} disabled={loading}>
+                  <Button onClick={handleUpdateTotalLessons} disabled={loading} size="sm">
                     Сохранить
                   </Button>
-                  <Button variant="outline" onClick={() => setShowEditTotal(false)}>
+                  <Button variant="outline" onClick={() => setShowEditTotal(false)} size="sm">
                     Отмена
                   </Button>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Изменение этого значения пересчитает количество оставшихся уроков
+                  Изменение этого значения автоматически пересчитает количество оставшихся уроков
+                </p>
+              </div>
+            )}
+
+            {showEditRemaining && (
+              <div className="p-4 bg-gradient-to-r from-accent/5 to-accent/10 rounded-xl border border-accent/20 space-y-3 animate-slide-in">
+                <Label htmlFor="remaining-lessons" className="text-sm font-semibold">
+                  Количество оставшихся уроков
+                </Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="remaining-lessons"
+                    type="number"
+                    min="0"
+                    value={newRemainingLessons}
+                    onChange={(e) => setNewRemainingLessons(e.target.value)}
+                    placeholder="Введите количество"
+                    className="flex-1"
+                  />
+                  <Button onClick={handleUpdateRemainingLessons} disabled={loading} size="sm">
+                    Сохранить
+                  </Button>
+                  <Button variant="outline" onClick={() => setShowEditRemaining(false)} size="sm">
+                    Отмена
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Изменение этого значения автоматически пересчитает общее количество оплаченных уроков
                 </p>
               </div>
             )}
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">Учетная запись ученика</h4>
-                <div className="flex gap-2">
-                  {!student.has_account ? (
-                    <Button size="sm" onClick={handleCreateAccount} disabled={loading}>
-                      <UserPlus className="h-4 w-4 mr-1" />
-                      Создать аккаунт
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="outline" onClick={handleRegenerateAccount} disabled={loading}>
-                      <UserPlus className="h-4 w-4 mr-1" />
-                      Перегенерировать
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {student.has_account && student.student_login && student.student_password && (
-                <div className="p-4 bg-muted rounded-lg space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Логин</Label>
-                      <div className="font-mono font-medium">{student.student_login}</div>
-                    </div>
-                    <Button size="sm" variant="ghost" onClick={() => copyToClipboard(student.student_login!, "login")}>
-                      {copiedLogin ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label className="text-xs text-muted-foreground">Пароль</Label>
-                      <div className="font-mono font-medium">{student.student_password}</div>
-                    </div>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      onClick={() => copyToClipboard(student.student_password!, "password")}
-                    >
-                      {copiedPassword ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    </Button>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <h4 className="font-medium">Управление уроками</h4>
-                <div className="flex gap-2">
-                  <Button size="sm" variant="outline" onClick={() => setShowDeductLessons(!showDeductLessons)}>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <h4 className="font-semibold text-lg">Управление уроками</h4>
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => setShowDeductLessons(!showDeductLessons)}
+                    className="hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30 transition-colors"
+                  >
                     <Minus className="h-4 w-4 mr-1" />
                     Списать
                   </Button>
-                  <Button size="sm" onClick={() => setShowAddLessons(!showAddLessons)}>
+                  <Button
+                    size="sm"
+                    onClick={() => setShowAddLessons(!showAddLessons)}
+                    className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all"
+                  >
                     <Plus className="h-4 w-4 mr-1" />
                     Добавить
                   </Button>
@@ -500,6 +558,7 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
                       e.stopPropagation()
                       setShowResetDialog(true)
                     }}
+                    className="hover:bg-destructive/90 transition-colors"
                   >
                     <RotateCcw className="h-4 w-4 mr-1" />
                     Обнулить
@@ -508,10 +567,12 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
               </div>
 
               {showDeductLessons && (
-                <div className="p-4 bg-muted/50 rounded-lg space-y-3 animate-slide-in">
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="p-4 bg-gradient-to-r from-destructive/5 to-destructive/10 rounded-xl border border-destructive/20 space-y-3 animate-slide-in">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <Label htmlFor="deduct-lessons">Количество уроков</Label>
+                      <Label htmlFor="deduct-lessons" className="text-sm font-medium">
+                        Количество уроков
+                      </Label>
                       <Input
                         id="deduct-lessons"
                         type="number"
@@ -523,7 +584,9 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
                       />
                     </div>
                     <div>
-                      <Label htmlFor="deduct-reason">Причина</Label>
+                      <Label htmlFor="deduct-reason" className="text-sm font-medium">
+                        Причина
+                      </Label>
                       <Input
                         id="deduct-reason"
                         value={deductReason}
@@ -546,20 +609,25 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
               )}
 
               {showAddLessons && (
-                <div className="p-4 bg-muted/50 rounded-lg space-y-3 animate-slide-in">
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="p-4 bg-gradient-to-r from-primary/5 to-primary/10 rounded-xl border border-primary/20 space-y-3 animate-slide-in">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div>
-                      <Label htmlFor="lessons">Количество уроков</Label>
+                      <Label htmlFor="lessons" className="text-sm font-medium">
+                        Количество уроков
+                      </Label>
                       <Input
                         id="lessons"
                         type="number"
                         min="1"
                         value={lessonsToAdd}
                         onChange={(e) => setLessonsToAdd(e.target.value)}
+                        placeholder="Введите количество"
                       />
                     </div>
                     <div>
-                      <Label htmlFor="amount">Сумма оплаты (₽)</Label>
+                      <Label htmlFor="amount" className="text-sm font-medium">
+                        Сумма оплаты (₽)
+                      </Label>
                       <Input
                         id="amount"
                         type="number"
@@ -567,18 +635,17 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
                         step="0.01"
                         value={paymentAmount}
                         onChange={(e) => setPaymentAmount(e.target.value)}
+                        placeholder="Введите сумму"
                       />
                     </div>
-                    <div className="col-span-2">
-                      <Button
-                        onClick={handleAddLessons}
-                        disabled={loading || !lessonsToAdd || !paymentAmount}
-                        className="w-full"
-                      >
-                        Добавить уроки
-                      </Button>
-                    </div>
                   </div>
+                  <Button
+                    onClick={handleAddLessons}
+                    disabled={loading || !lessonsToAdd || !paymentAmount}
+                    className="w-full bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                  >
+                    Добавить уроки
+                  </Button>
                 </div>
               )}
             </div>

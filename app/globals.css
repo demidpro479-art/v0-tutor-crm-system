@@ -230,13 +230,17 @@ button:active {
 
   /* Улучшенная адаптация для кнопок */
   button {
-    min-height: 44px; /* Минимальная высота для удобного нажатия */
+    min-height: 44px;
+    padding: 0.5rem 1rem;
   }
 
   /* Адаптация для диалогов */
   [role="dialog"] {
-    max-width: 95vw !important;
-    margin: 1rem;
+    max-width: 100vw !important;
+    width: 100vw !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    max-height: 100vh !important;
   }
 
   /* Адаптация для форм */
@@ -244,6 +248,81 @@ button:active {
   select,
   textarea {
     font-size: 16px; /* Предотвращает зум на iOS */
+    min-height: 44px;
+  }
+
+  /* Адаптация для календаря */
+  .calendar-grid {
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 0.5rem;
+  }
+
+  /* Адаптация для карточек статистики */
+  .stat-card {
+    padding: 1rem;
+    font-size: 0.875rem;
+  }
+
+  /* Скрываем лишние элементы на мобильных */
+  .hide-mobile {
+    display: none !important;
+  }
+
+  /* Адаптация для таблиц */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  /* Адаптация для навигации */
+  nav {
+    padding: 0.5rem;
+  }
+
+  /* Увеличиваем размер текста для лучшей читаемости */
+  body {
+    font-size: 16px;
+    line-height: 1.6;
+  }
+
+  /* Адаптация для кнопок в группах */
+  .button-group {
+    flex-direction: column;
+    width: 100%;
+  }
+
+  .button-group button {
+    width: 100%;
+  }
+}
+
+/* Дополнительная адаптация для очень маленьких экранов */
+@media (max-width: 480px) {
+  [role="dialog"] {
+    padding: 1rem;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+  }
+
+  /* Уменьшаем отступы на маленьких экранах */
+  .container {
+    padding: 0.75rem;
+  }
+
+  /* Адаптация для карточек */
+  .card {
+    padding: 0.75rem;
   }
 }
 

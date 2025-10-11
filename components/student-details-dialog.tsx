@@ -112,6 +112,12 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
     try {
       const supabase = createClient()
 
+      console.log("[v0] Добавление уроков:", {
+        studentId: student.id,
+        lessonsCount: Number.parseInt(lessonsToAdd),
+        amount: Number.parseFloat(paymentAmount),
+      })
+
       const { error } = await supabase.rpc("add_paid_lessons", {
         p_student_id: student.id,
         p_lessons_count: Number.parseInt(lessonsToAdd),
@@ -119,14 +125,24 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
         p_notes: `Добавлено ${lessonsToAdd} уроков`,
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Ошибка от Supabase:", error)
+        throw error
+      }
+
+      console.log("[v0] Уроки успешно добавлены")
+
+      toast({
+        title: "Уроки добавлены",
+        description: `Добавлено ${lessonsToAdd} уроков на сумму ${paymentAmount}₽`,
+      })
 
       setLessonsToAdd("")
       setPaymentAmount("")
       setShowAddLessons(false)
       onStudentUpdated()
     } catch (error) {
-      console.error("Ошибка добавления уроков:", error)
+      console.error("[v0] Ошибка добавления уроков:", error)
       toast({
         title: "Ошибка",
         description: error instanceof Error ? error.message : "Не удалось добавить уроки",
@@ -147,13 +163,31 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
     try {
       const supabase = createClient()
 
+      console.log("[v0] Удаление ученика:", student.id)
+
       const { error } = await supabase.from("students").delete().eq("id", student.id)
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Ошибка от Supabase:", error)
+        throw error
+      }
+
+      console.log("[v0] Ученик успешно удален")
+
+      toast({
+        title: "Ученик удален",
+        description: "Ученик успешно удален из системы",
+      })
+
       onStudentUpdated()
       onOpenChange(false)
     } catch (error) {
-      console.error("Ошибка удаления ученика:", error)
+      console.error("[v0] Ошибка удаления ученика:", error)
+      toast({
+        title: "Ошибка",
+        description: error instanceof Error ? error.message : "Не удалось удалить ученика",
+        variant: "destructive",
+      })
     } finally {
       setLoading(false)
     }
@@ -261,13 +295,24 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
     try {
       const supabase = createClient()
 
+      console.log("[v0] Списание уроков:", {
+        studentId: student.id,
+        lessonsCount: Number.parseInt(lessonsToDeduct),
+        reason: deductReason,
+      })
+
       const { error } = await supabase.rpc("deduct_lessons", {
         p_student_id: student.id,
         p_lessons_count: Number.parseInt(lessonsToDeduct),
         p_reason: deductReason || "Списание уроков",
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Ошибка от Supabase:", error)
+        throw error
+      }
+
+      console.log("[v0] Уроки успешно списаны")
 
       toast({
         title: "Уроки списаны",
@@ -279,7 +324,7 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
       setShowDeductLessons(false)
       onStudentUpdated()
     } catch (error) {
-      console.error("Ошибка списания уроков:", error)
+      console.error("[v0] Ошибка списания уроков:", error)
       toast({
         title: "Ошибка",
         description: error instanceof Error ? error.message : "Не удалось списать уроки",
@@ -371,12 +416,22 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
         throw new Error("Введите корректное число")
       }
 
+      console.log("[v0] Обновление оставшихся уроков:", {
+        studentId: student.id,
+        newRemaining: newRemaining,
+      })
+
       const { error } = await supabase.rpc("update_remaining_lessons", {
         p_student_id: student.id,
         p_new_remaining: newRemaining,
       })
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Ошибка от Supabase:", error)
+        throw error
+      }
+
+      console.log("[v0] Оставшиеся уроки успешно обновлены")
 
       toast({
         title: "Обновлено",
@@ -386,7 +441,7 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
       setShowEditRemaining(false)
       onStudentUpdated()
     } catch (error) {
-      console.error("Ошибка обновления количества уроков:", error)
+      console.error("[v0] Ошибка обновления количества уроков:", error)
       toast({
         title: "Ошибка",
         description: error instanceof Error ? error.message : "Не удалось обновить количество уроков",

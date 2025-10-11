@@ -114,21 +114,27 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
 
       console.log("[v0] Добавление уроков:", {
         studentId: student.id,
-        lessonsCount: Number.parseInt(lessonsToAdd),
-        amount: Number.parseFloat(paymentAmount),
+        amount: Number.parseInt(lessonsToAdd),
       })
 
       const { error } = await supabase.rpc("add_paid_lessons", {
         p_student_id: student.id,
-        p_lessons_count: Number.parseInt(lessonsToAdd),
-        p_amount: Number.parseFloat(paymentAmount),
-        p_notes: `Добавлено ${lessonsToAdd} уроков`,
+        p_amount: Number.parseInt(lessonsToAdd),
       })
 
       if (error) {
         console.error("[v0] Ошибка от Supabase:", error)
         throw error
       }
+
+      // Добавляем запись о платеже
+      await supabase.from("payments").insert({
+        student_id: student.id,
+        amount: Number.parseFloat(paymentAmount),
+        lessons_purchased: Number.parseInt(lessonsToAdd),
+        payment_date: new Date().toISOString(),
+        notes: `Добавлено ${lessonsToAdd} уроков`,
+      })
 
       console.log("[v0] Уроки успешно добавлены")
 
@@ -297,14 +303,12 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
 
       console.log("[v0] Списание уроков:", {
         studentId: student.id,
-        lessonsCount: Number.parseInt(lessonsToDeduct),
-        reason: deductReason,
+        amount: Number.parseInt(lessonsToDeduct),
       })
 
-      const { error } = await supabase.rpc("deduct_lessons", {
+      const { error } = await supabase.rpc("deduct_paid_lessons", {
         p_student_id: student.id,
-        p_lessons_count: Number.parseInt(lessonsToDeduct),
-        p_reason: deductReason || "Списание уроков",
+        p_amount: Number.parseInt(lessonsToDeduct),
       })
 
       if (error) {
@@ -341,7 +345,7 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
     try {
       const supabase = createClient()
 
-      const { error } = await supabase.rpc("reset_student_lessons", {
+      const { error } = await supabase.rpc("reset_all_lessons", {
         p_student_id: student.id,
       })
 
@@ -377,12 +381,10 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
         throw new Error("Введите корректное число")
       }
 
-      const { error } = await supabase
-        .from("students")
-        .update({
-          total_paid_lessons: newTotal,
-        })
-        .eq("id", student.id)
+      const { error } = await supabase.rpc("set_total_paid_lessons", {
+        p_student_id: student.id,
+        p_amount: newTotal,
+      })
 
       if (error) throw error
 
@@ -421,9 +423,9 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
         newRemaining: newRemaining,
       })
 
-      const { error } = await supabase.rpc("update_remaining_lessons", {
+      const { error } = await supabase.rpc("set_remaining_lessons", {
         p_student_id: student.id,
-        p_new_remaining: newRemaining,
+        p_amount: newRemaining,
       })
 
       if (error) {

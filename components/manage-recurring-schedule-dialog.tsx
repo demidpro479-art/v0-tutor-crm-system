@@ -92,21 +92,39 @@ export function ManageRecurringScheduleDialog({
     const supabase = createClient()
 
     try {
-      // Используем новую улучшенную функцию update_recurring_schedule_smart
-      const { data, error: updateError } = await supabase.rpc("update_recurring_schedule_smart", {
-        p_schedule_id: scheduleId,
-        p_new_day_of_week: editData.day_of_week,
-        p_new_time_of_day: editData.time_of_day,
-        p_new_duration: editData.duration_minutes,
+      console.log("[v0] Обновление расписания:", {
+        scheduleId,
+        newDay: editData.day_of_week,
+        newTime: editData.time_of_day,
+        newDuration: editData.duration_minutes,
       })
 
-      if (updateError) throw updateError
+      const { error: updateError } = await supabase.rpc("update_recurring_schedule_time", {
+        p_schedule_id: scheduleId,
+        p_new_time: editData.time_of_day,
+        p_new_days: [editData.day_of_week],
+      })
 
-      console.log("[v0] Результат обновления расписания:", data)
+      if (updateError) {
+        console.error("[v0] Ошибка обновления расписания:", updateError)
+        throw updateError
+      }
+
+      // Обновляем длительность отдельно
+      const { error: durationError } = await supabase
+        .from("recurring_schedules")
+        .update({ duration_minutes: editData.duration_minutes })
+        .eq("id", scheduleId)
+
+      if (durationError) {
+        console.error("[v0] Ошибка обновления длительности:", durationError)
+      }
+
+      console.log("[v0] Расписание успешно обновлено")
 
       toast({
         title: "Успешно!",
-        description: `Расписание обновлено. Удалено ${data.deleted_lessons} старых уроков, создано ${data.created_lessons} новых`,
+        description: "Расписание обновлено, старые уроки удалены",
       })
 
       setEditingId(null)

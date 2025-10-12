@@ -92,49 +92,28 @@ export function ManageRecurringScheduleDialog({
     const supabase = createClient()
 
     try {
-      console.log("[v0] Обновление расписания:", {
-        scheduleId,
-        newDay: editData.day_of_week,
-        newTime: editData.time_of_day,
-        newDuration: editData.duration_minutes,
-      })
-
-      const { error: updateError } = await supabase.rpc("update_recurring_schedule_time", {
+      const { error: updateError } = await supabase.rpc("update_recurring_schedule_and_lessons", {
         p_schedule_id: scheduleId,
+        p_new_day: editData.day_of_week,
         p_new_time: editData.time_of_day,
-        p_new_days: [editData.day_of_week],
+        p_new_duration: editData.duration_minutes,
       })
 
-      if (updateError) {
-        console.error("[v0] Ошибка обновления расписания:", updateError)
-        throw updateError
-      }
-
-      // Обновляем длительность отдельно
-      const { error: durationError } = await supabase
-        .from("recurring_schedules")
-        .update({ duration_minutes: editData.duration_minutes })
-        .eq("id", scheduleId)
-
-      if (durationError) {
-        console.error("[v0] Ошибка обновления длительности:", durationError)
-      }
-
-      console.log("[v0] Расписание успешно обновлено")
+      if (updateError) throw updateError
 
       toast({
         title: "Успешно!",
-        description: "Расписание обновлено, старые уроки удалены",
+        description: "Расписание обновлено, старые уроки удалены и созданы новые",
       })
 
       setEditingId(null)
       fetchSchedules()
       onScheduleUpdated()
     } catch (error) {
-      console.error("[v0] Ошибка обновления расписания:", error)
+      console.error("Ошибка обновления расписания:", error)
       toast({
         title: "Ошибка",
-        description: error instanceof Error ? error.message : "Не удалось обновить расписание",
+        description: "Не удалось обновить расписание",
         variant: "destructive",
       })
     } finally {
@@ -151,35 +130,34 @@ export function ManageRecurringScheduleDialog({
     const supabase = createClient()
 
     try {
-      // Сначала удаляем все будущие уроки этого расписания
+      // Удаляем все будущие уроки этого расписания
       const { error: lessonsError } = await supabase
         .from("lessons")
         .delete()
         .eq("recurring_schedule_id", scheduleId)
-        .eq("status", "scheduled")
         .gte("scheduled_at", new Date().toISOString())
 
       if (lessonsError) {
-        console.error("[v0] Ошибка удаления уроков:", lessonsError)
+        console.error("Ошибка удаления уроков:", lessonsError)
       }
 
-      // Затем удаляем само расписание
+      // Удаляем расписание
       const { error: scheduleError } = await supabase.from("recurring_schedules").delete().eq("id", scheduleId)
 
       if (scheduleError) throw scheduleError
 
       toast({
         title: "Успешно!",
-        description: "Расписание и все будущие уроки удалены",
+        description: "Расписание и будущие уроки удалены",
       })
 
       fetchSchedules()
       onScheduleUpdated()
     } catch (error) {
-      console.error("[v0] Ошибка удаления расписания:", error)
+      console.error("Ошибка удаления расписания:", error)
       toast({
         title: "Ошибка",
-        description: error instanceof Error ? error.message : "Не удалось удалить расписание",
+        description: "Не удалось удалить расписание",
         variant: "destructive",
       })
     } finally {
@@ -193,29 +171,24 @@ export function ManageRecurringScheduleDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl">Регулярное расписание: {studentName}</DialogTitle>
-          <DialogDescription>
-            При изменении времени все будущие уроки автоматически обновятся на новое время
-          </DialogDescription>
+          <DialogTitle>Регулярное расписание: {studentName}</DialogTitle>
+          <DialogDescription>Изменения автоматически применятся ко всем будущим урокам</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-3">
           {schedules.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>Нет регулярных расписаний для этого ученика</p>
-              <p className="text-sm mt-2">Создайте расписание в разделе "Календарь"</p>
-            </div>
+            <div className="text-center py-8 text-muted-foreground">Нет регулярных расписаний для этого ученика</div>
           ) : (
             schedules.map((schedule) => (
-              <Card key={schedule.id} className="card-enhanced">
+              <Card key={schedule.id}>
                 <CardContent className="p-4">
                   {editingId === schedule.id ? (
-                    <div className="space-y-3 animate-slide-in">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div className="space-y-3">
+                      <div className="grid grid-cols-3 gap-2">
                         <div>
-                          <Label className="text-xs font-medium">День недели</Label>
+                          <Label className="text-xs">День недели</Label>
                           <select
-                            className="w-full mt-1 px-3 py-2 text-sm border rounded-lg bg-background"
+                            className="w-full mt-1 px-2 py-1 text-sm border rounded"
                             value={editData.day_of_week}
                             onChange={(e) => setEditData({ ...editData, day_of_week: Number.parseInt(e.target.value) })}
                           >
@@ -227,21 +200,19 @@ export function ManageRecurringScheduleDialog({
                           </select>
                         </div>
                         <div>
-                          <Label className="text-xs font-medium">Время</Label>
+                          <Label className="text-xs">Время</Label>
                           <Input
                             type="time"
-                            className="mt-1"
+                            className="mt-1 text-sm"
                             value={editData.time_of_day}
                             onChange={(e) => setEditData({ ...editData, time_of_day: e.target.value })}
                           />
                         </div>
                         <div>
-                          <Label className="text-xs font-medium">Длительность (мин)</Label>
+                          <Label className="text-xs">Длительность</Label>
                           <Input
                             type="number"
-                            className="mt-1"
-                            min="15"
-                            step="15"
+                            className="mt-1 text-sm"
                             value={editData.duration_minutes}
                             onChange={(e) =>
                               setEditData({ ...editData, duration_minutes: Number.parseInt(e.target.value) })
@@ -250,40 +221,35 @@ export function ManageRecurringScheduleDialog({
                         </div>
                       </div>
                       <div className="flex gap-2">
-                        <Button size="sm" onClick={() => saveEdit(schedule.id)} disabled={loading} className="flex-1">
-                          <Save className="h-4 w-4 mr-1" />
-                          Сохранить и обновить уроки
+                        <Button size="sm" onClick={() => saveEdit(schedule.id)} disabled={loading}>
+                          <Save className="h-3 w-3 mr-1" />
+                          Сохранить
                         </Button>
-                        <Button size="sm" variant="outline" onClick={cancelEdit} disabled={loading}>
-                          <X className="h-4 w-4 mr-1" />
+                        <Button size="sm" variant="outline" onClick={cancelEdit}>
+                          <X className="h-3 w-3 mr-1" />
                           Отмена
                         </Button>
                       </div>
                     </div>
                   ) : (
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="flex-1">
-                        <div className="font-semibold text-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <div className="font-medium">
                           {dayNames[schedule.day_of_week]} в {schedule.time_of_day}
                         </div>
-                        <div className="text-sm text-muted-foreground mt-1">
-                          Длительность: {schedule.duration_minutes} минут
+                        <div className="text-sm text-muted-foreground">
+                          Длительность: {schedule.duration_minutes} мин
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant={schedule.is_active ? "default" : "secondary"} className="px-3 py-1">
+                        <Badge variant={schedule.is_active ? "default" : "secondary"}>
                           {schedule.is_active ? "Активно" : "Неактивно"}
                         </Badge>
-                        <Button size="sm" variant="outline" onClick={() => startEdit(schedule)} disabled={loading}>
-                          <Edit2 className="h-4 w-4" />
+                        <Button size="sm" variant="outline" onClick={() => startEdit(schedule)}>
+                          <Edit2 className="h-3 w-3" />
                         </Button>
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => deleteSchedule(schedule.id)}
-                          disabled={loading}
-                        >
-                          <Trash2 className="h-4 w-4" />
+                        <Button size="sm" variant="destructive" onClick={() => deleteSchedule(schedule.id)}>
+                          <Trash2 className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
@@ -295,9 +261,7 @@ export function ManageRecurringScheduleDialog({
         </div>
 
         <DialogFooter>
-          <Button onClick={() => onOpenChange(false)} variant="outline">
-            Закрыть
-          </Button>
+          <Button onClick={() => onOpenChange(false)}>Закрыть</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

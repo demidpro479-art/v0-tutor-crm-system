@@ -1,11 +1,22 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
+import { Inter, JetBrains_Mono } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "@/components/ui/toaster"
 import { Suspense } from "react"
 import "./globals.css"
+
+const inter = Inter({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-sans",
+  display: "swap",
+})
+
+const jetbrainsMono = JetBrains_Mono({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-mono",
+  display: "swap",
+})
 
 export const metadata: Metadata = {
   title: "CRM Репетитора - Управление учениками и расписанием",
@@ -20,7 +31,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" className="h-full">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} font-sans h-full antialiased`}>
         <Suspense fallback={null}>
           {children}
           <Toaster />

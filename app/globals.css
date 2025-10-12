@@ -125,7 +125,7 @@
   }
 }
 
-/* Добавляем крутые анимации */
+/* Добавлены улучшенные анимации и эффекты */
 @keyframes slideIn {
   from {
     opacity: 0;
@@ -156,6 +156,15 @@
   }
 }
 
+@keyframes shimmer {
+  0% {
+    background-position: -1000px 0;
+  }
+  100% {
+    background-position: 1000px 0;
+  }
+}
+
 .animate-slide-in {
   animation: slideIn 0.3s ease-out;
 }
@@ -168,11 +177,21 @@
   animation: pulse-soft 2s ease-in-out infinite;
 }
 
+.animate-shimmer {
+  animation: shimmer 2s infinite;
+  background: linear-gradient(to right, transparent 0%, rgba(255, 255, 255, 0.3) 50%, transparent 100%);
+  background-size: 1000px 100%;
+}
+
 /* Плавные переходы для всех интерактивных элементов */
 button,
 a,
 [role="button"] {
   transition: all 0.2s ease-in-out;
+}
+
+button:active {
+  transform: scale(0.98);
 }
 
 /* Улучшенные тени для карточек */
@@ -184,6 +203,23 @@ a,
 .card-enhanced:hover {
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1), 0 6px 12px rgba(0, 0, 0, 0.08);
   transform: translateY(-2px);
+}
+
+/* Градиентные фоны */
+.gradient-blue {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.gradient-green {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+
+.gradient-purple {
+  background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+}
+
+.gradient-orange {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
 }
 
 /* Мобильная адаптация */
@@ -199,4 +235,37 @@ a,
   .mobile-text-sm {
     font-size: 0.875rem;
   }
+
+  /* Улучшенная адаптация для мобильных устройств */
+  button,
+  [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* Предотвращает автозум на iOS */
+  }
+}
+
+/* Скроллбар */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--muted);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
 }

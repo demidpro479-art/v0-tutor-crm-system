@@ -1,26 +1,40 @@
 import { redirect } from "next/navigation"
-import { createServerClient } from "@/lib/supabase/server"
+import { createClient } from "@/lib/supabase/server"
 import { ManagerDashboard } from "@/components/manager-dashboard"
 
 export const dynamic = "force-dynamic"
 
 export default async function ManagerPage() {
-  const supabase = await createServerClient()
+  try {
+    const supabase = await createClient()
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  if (!user) {
-    redirect("/auth/login")
+    if (!user) {
+      redirect("/auth/login")
+    }
+
+    // Check if user is manager or admin
+    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+
+    if (!profile || (profile.role !== "manager" && profile.role !== "admin")) {
+      redirect("/dashboard")
+    }
+
+    return <ManagerDashboard userId={user.id} />
+  } catch (error) {
+    console.error("[v0] Error in ManagerPage:", error)
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <div className="max-w-md rounded-lg border border-red-200 bg-red-50 p-6 text-center">
+          <h1 className="mb-2 text-xl font-semibold text-red-900">Configuration Error</h1>
+          <p className="text-sm text-red-700">
+            Supabase is not properly configured. Please check your environment variables.
+          </p>
+        </div>
+      </div>
+    )
   }
-
-  // Check if user is manager or admin
-  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
-
-  if (!profile || (profile.role !== "manager" && profile.role !== "admin")) {
-    redirect("/dashboard")
-  }
-
-  return <ManagerDashboard userId={user.id} />
 }

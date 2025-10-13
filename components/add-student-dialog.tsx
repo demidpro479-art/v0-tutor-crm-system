@@ -47,6 +47,7 @@ export function AddStudentDialog({
   const [createAccount, setCreateAccount] = useState(true)
   const [tutors, setTutors] = useState<Tutor[]>([])
   const [selectedTutorId, setSelectedTutorId] = useState<string>("")
+  const [errors, setErrors] = useState<Record<string, string>>({})
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -60,7 +61,6 @@ export function AddStudentDialog({
     if (open && userRole === "admin") {
       loadTutors()
     } else if (open && (userRole === "tutor" || !userRole)) {
-      // Если это репетитор или роль не указана, автоматически выбираем текущего пользователя
       setSelectedTutorId(currentUserId || "")
     }
   }, [open, userRole, currentUserId])
@@ -78,8 +78,49 @@ export function AddStudentDialog({
     }
   }
 
+  const validateForm = () => {
+    const newErrors: Record<string, string> = {}
+
+    if (!formData.name.trim()) {
+      newErrors.name = "Имя обязательно для заполнения"
+    }
+
+    if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      newErrors.email = "Некорректный email адрес"
+    }
+
+    if (formData.phone && !/^[\d\s+\-$$$$]+$/.test(formData.phone)) {
+      newErrors.phone = "Некорректный номер телефона"
+    }
+
+    if (formData.hourly_rate && Number.parseFloat(formData.hourly_rate) < 0) {
+      newErrors.hourly_rate = "Стоимость не может быть отрицательной"
+    }
+
+    if (formData.lesson_link && !/^https?:\/\/.+/.test(formData.lesson_link)) {
+      newErrors.lesson_link = "Ссылка должна начинаться с http:// или https://"
+    }
+
+    if (userRole === "admin" && !selectedTutorId) {
+      newErrors.tutor = "Выберите репетитора"
+    }
+
+    setErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+
+    if (!validateForm()) {
+      toast({
+        title: "Ошибка валидации",
+        description: "Пожалуйста, исправьте ошибки в форме",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -133,7 +174,6 @@ export function AddStudentDialog({
           const login = accountData[0].login
           const password = accountData[0].password
 
-          // Создаем реальный Supabase аккаунт через API
           const response = await fetch("/api/create-student-account", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -167,7 +207,6 @@ export function AddStudentDialog({
         })
       }
 
-      // Сброс формы
       setFormData({
         name: "",
         email: "",
@@ -177,6 +216,7 @@ export function AddStudentDialog({
         lesson_link: "",
       })
       setSelectedTutorId("")
+      setErrors({})
 
       onOpenChange(false)
       onStudentAdded()
@@ -189,7 +229,7 @@ export function AddStudentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
@@ -205,17 +245,29 @@ export function AddStudentDialog({
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, name: e.target.value })
+                  if (errors.name) setErrors({ ...errors, name: "" })
+                }}
                 required
                 placeholder="Иван Иванов"
+                className={errors.name ? "border-destructive" : ""}
               />
+              {errors.name && <p className="text-xs text-destructive">{errors.name}</p>}
             </div>
 
             {userRole === "admin" && (
               <div className="grid gap-2">
                 <Label htmlFor="tutor">Репетитор *</Label>
-                <Select value={selectedTutorId} onValueChange={setSelectedTutorId} required>
-                  <SelectTrigger>
+                <Select
+                  value={selectedTutorId}
+                  onValueChange={(value) => {
+                    setSelectedTutorId(value)
+                    if (errors.tutor) setErrors({ ...errors, tutor: "" })
+                  }}
+                  required
+                >
+                  <SelectTrigger className={errors.tutor ? "border-destructive" : ""}>
                     <SelectValue placeholder="Выберите репетитора" />
                   </SelectTrigger>
                   <SelectContent>
@@ -226,6 +278,7 @@ export function AddStudentDialog({
                     ))}
                   </SelectContent>
                 </Select>
+                {errors.tutor && <p className="text-xs text-destructive">{errors.tutor}</p>}
               </div>
             )}
 
@@ -235,9 +288,14 @@ export function AddStudentDialog({
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, email: e.target.value })
+                  if (errors.email) setErrors({ ...errors, email: "" })
+                }}
                 placeholder="student@example.com"
+                className={errors.email ? "border-destructive" : ""}
               />
+              {errors.email && <p className="text-xs text-destructive">{errors.email}</p>}
             </div>
 
             <div className="grid gap-2">
@@ -245,9 +303,14 @@ export function AddStudentDialog({
               <Input
                 id="phone"
                 value={formData.phone}
-                onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, phone: e.target.value })
+                  if (errors.phone) setErrors({ ...errors, phone: "" })
+                }}
                 placeholder="+7 (999) 123-45-67"
+                className={errors.phone ? "border-destructive" : ""}
               />
+              {errors.phone && <p className="text-xs text-destructive">{errors.phone}</p>}
             </div>
 
             <div className="grid gap-2">
@@ -256,9 +319,14 @@ export function AddStudentDialog({
                 id="lesson_link"
                 type="url"
                 value={formData.lesson_link}
-                onChange={(e) => setFormData({ ...formData, lesson_link: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, lesson_link: e.target.value })
+                  if (errors.lesson_link) setErrors({ ...errors, lesson_link: "" })
+                }}
                 placeholder="https://zoom.us/j/..."
+                className={errors.lesson_link ? "border-destructive" : ""}
               />
+              {errors.lesson_link && <p className="text-xs text-destructive">{errors.lesson_link}</p>}
               <p className="text-xs text-muted-foreground">Эта ссылка будет использоваться для всех уроков ученика</p>
             </div>
 
@@ -270,9 +338,14 @@ export function AddStudentDialog({
                 min="0"
                 step="0.01"
                 value={formData.hourly_rate}
-                onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
+                onChange={(e) => {
+                  setFormData({ ...formData, hourly_rate: e.target.value })
+                  if (errors.hourly_rate) setErrors({ ...errors, hourly_rate: "" })
+                }}
                 placeholder="1000"
+                className={errors.hourly_rate ? "border-destructive" : ""}
               />
+              {errors.hourly_rate && <p className="text-xs text-destructive">{errors.hourly_rate}</p>}
             </div>
 
             <div className="grid gap-2">

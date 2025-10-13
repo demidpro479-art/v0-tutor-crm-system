@@ -1,11 +1,21 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { GeistSans } from "geist/font/sans"
-import { GeistMono } from "geist/font/mono"
+import { Geist } from "next/font/google"
 import { Analytics } from "@vercel/analytics/next"
 import { Toaster } from "@/components/ui/toaster"
 import { Suspense } from "react"
 import "./globals.css"
+
+const geistSans = Geist({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-geist-sans",
+})
+
+const geistMono = Geist({
+  subsets: ["latin", "cyrillic"],
+  variable: "--font-geist-mono",
+  weight: ["400", "500", "600", "700"],
+})
 
 export const metadata: Metadata = {
   title: "CRM Репетитора - Управление учениками и расписанием",
@@ -20,7 +30,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" className="h-full">
-      <body className={`font-sans ${GeistSans.variable} ${GeistMono.variable} h-full antialiased`}>
+      <body className={`font-sans ${geistSans.variable} ${geistMono.variable} h-full antialiased`}>
         <Suspense fallback={null}>
           {children}
           <Toaster />

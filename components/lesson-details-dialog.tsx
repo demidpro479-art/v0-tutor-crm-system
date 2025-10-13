@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -17,9 +17,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { createClient } from "@/lib/supabase/client"
-import { Trash2, User, CheckCircle, Clock, CalendarIcon, Star, FileText } from "lucide-react"
+import { Trash2, User, CheckCircle, Clock, CalendarIcon, Star, FileText, LinkIcon } from "lucide-react"
 import { Alert, AlertDescription } from "@/components/ui/alert"
 import { useToast } from "@/hooks/use-toast"
+import { CancelLessonEarningDialog } from "@/components/cancel-lesson-earning-dialog"
 
 interface Lesson {
   id: string
@@ -35,6 +36,7 @@ interface Lesson {
   student_name: string
   grade?: number
   homework?: string
+  lesson_link?: string
 }
 
 interface LessonDetailsDialogProps {
@@ -46,6 +48,7 @@ interface LessonDetailsDialogProps {
 
 export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdated }: LessonDetailsDialogProps) {
   const [loading, setLoading] = useState(false)
+  const [userRole, setUserRole] = useState<string | null>(null)
   const { toast } = useToast()
 
   const displayTime = lesson.original_time || new Date(lesson.scheduled_at).toTimeString().slice(0, 5)
@@ -63,6 +66,7 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
     notes: lesson.notes || "",
     grade: lesson.grade?.toString() || "",
     homework: lesson.homework || "",
+    lesson_link: lesson.lesson_link || "",
   })
 
   const handleUpdate = async () => {
@@ -86,6 +90,7 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
           notes: formData.notes || null,
           grade: formData.grade ? Number.parseInt(formData.grade) : null,
           homework: formData.homework || null,
+          lesson_link: formData.lesson_link || null,
         })
         .eq("id", lesson.id)
 
@@ -196,6 +201,20 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
         return "Запланирован"
     }
   }
+
+  useEffect(() => {
+    async function loadUserRole() {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (user) {
+        const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+        setUserRole(profile?.role || null)
+      }
+    }
+    loadUserRole()
+  }, [])
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -401,14 +420,37 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
                 placeholder="Дополнительная информация..."
               />
             </div>
+
+            {/* Добавлено поле для ссылки на урок */}
+            <div className="grid gap-2">
+              <Label htmlFor="lesson_link" className="text-sm font-medium flex items-center gap-1">
+                <LinkIcon className="h-3 w-3" />
+                Ссылка на урок
+              </Label>
+              <Input
+                id="lesson_link"
+                type="url"
+                value={formData.lesson_link}
+                onChange={(e) => setFormData({ ...formData, lesson_link: e.target.value })}
+                className="transition-all"
+                placeholder="https://zoom.us/j/..."
+              />
+              <p className="text-xs text-muted-foreground">Эта ссылка будет видна ученику в его личном кабинете</p>
+            </div>
           </div>
         </div>
 
         <DialogFooter className="flex flex-col sm:flex-row justify-between gap-2">
-          <Button variant="destructive" onClick={handleDelete} disabled={loading} className="w-full sm:w-auto">
-            <Trash2 className="h-4 w-4 mr-2" />
-            Удалить
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-2">
+            <Button variant="destructive" onClick={handleDelete} disabled={loading} className="w-full sm:w-auto">
+              <Trash2 className="h-4 w-4 mr-2" />
+              Удалить
+            </Button>
+
+            {userRole === "admin" && lesson.status === "completed" && (
+              <CancelLessonEarningDialog lessonId={lesson.id} onSuccess={onLessonUpdated} />
+            )}
+          </div>
 
           <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
             <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">

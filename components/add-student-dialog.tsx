@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -19,24 +19,64 @@ import { Switch } from "@/components/ui/switch"
 import { createClient } from "@/lib/supabase/client"
 import { useToast } from "@/hooks/use-toast"
 import { UserPlus } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface AddStudentDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onStudentAdded: () => void
+  currentUserId?: string
+  userRole?: string
 }
 
-export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStudentDialogProps) {
+interface Tutor {
+  id: string
+  full_name: string | null
+  email: string
+}
+
+export function AddStudentDialog({
+  open,
+  onOpenChange,
+  onStudentAdded,
+  currentUserId,
+  userRole,
+}: AddStudentDialogProps) {
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
   const [createAccount, setCreateAccount] = useState(true)
+  const [tutors, setTutors] = useState<Tutor[]>([])
+  const [selectedTutorId, setSelectedTutorId] = useState<string>("")
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     phone: "",
     hourly_rate: "",
     notes: "",
+    lesson_link: "",
   })
+
+  useEffect(() => {
+    if (open && userRole === "admin") {
+      loadTutors()
+    } else if (open && (userRole === "tutor" || !userRole)) {
+      // Если это репетитор или роль не указана, автоматически выбираем текущего пользователя
+      setSelectedTutorId(currentUserId || "")
+    }
+  }, [open, userRole, currentUserId])
+
+  async function loadTutors() {
+    const supabase = createClient()
+    const { data } = await supabase
+      .from("profiles")
+      .select("id, full_name, email")
+      .eq("role", "tutor")
+      .order("full_name")
+
+    if (data) {
+      setTutors(data)
+    }
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,6 +99,8 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
             remaining_lessons: 0,
             total_paid_lessons: 0,
             is_active: true,
+            tutor_id: selectedTutorId || currentUserId || null,
+            lesson_link: formData.lesson_link || null,
           },
         ])
         .select()
@@ -132,7 +174,9 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
         phone: "",
         hourly_rate: "",
         notes: "",
+        lesson_link: "",
       })
+      setSelectedTutorId("")
 
       onOpenChange(false)
       onStudentAdded()
@@ -167,6 +211,24 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
               />
             </div>
 
+            {userRole === "admin" && (
+              <div className="grid gap-2">
+                <Label htmlFor="tutor">Репетитор *</Label>
+                <Select value={selectedTutorId} onValueChange={setSelectedTutorId} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Выберите репетитора" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {tutors.map((tutor) => (
+                      <SelectItem key={tutor.id} value={tutor.id}>
+                        {tutor.full_name || tutor.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -186,6 +248,18 @@ export function AddStudentDialog({ open, onOpenChange, onStudentAdded }: AddStud
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="+7 (999) 123-45-67"
               />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="lesson_link">Ссылка на урок</Label>
+              <Input
+                id="lesson_link"
+                type="url"
+                value={formData.lesson_link}
+                onChange={(e) => setFormData({ ...formData, lesson_link: e.target.value })}
+                placeholder="https://zoom.us/j/..."
+              />
+              <p className="text-xs text-muted-foreground">Эта ссылка будет использоваться для всех уроков ученика</p>
             </div>
 
             <div className="grid gap-2">

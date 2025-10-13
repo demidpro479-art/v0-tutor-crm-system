@@ -34,6 +34,8 @@ interface StudentData {
   name: string
   remaining_lessons: number
   total_paid_lessons: number
+  tutor_id: string | null
+  lesson_link: string | null
 }
 
 interface Lesson {
@@ -44,6 +46,13 @@ interface Lesson {
   grade: number | null
   homework: string | null
   duration_minutes: number
+  lesson_link: string | null
+}
+
+interface Tutor {
+  id: string
+  full_name: string | null
+  email: string
 }
 
 export function StudentDashboard({
@@ -57,6 +66,7 @@ export function StudentDashboard({
 }) {
   const [student, setStudent] = useState<StudentData | null>(initialStudentData || null)
   const [lessons, setLessons] = useState<Lesson[]>([])
+  const [tutor, setTutor] = useState<Tutor | null>(null)
   const [loading, setLoading] = useState(true)
   const [showNicknameDialog, setShowNicknameDialog] = useState(false)
   const [nickname, setNickname] = useState(profile.full_name || "")
@@ -94,6 +104,18 @@ export function StudentDashboard({
 
       if (studentData) {
         setStudent(studentData)
+
+        if (studentData.tutor_id) {
+          const { data: tutorData } = await supabase
+            .from("profiles")
+            .select("id, full_name, email")
+            .eq("id", studentData.tutor_id)
+            .single()
+
+          if (tutorData) {
+            setTutor(tutorData)
+          }
+        }
       }
     }
 
@@ -351,6 +373,22 @@ export function StudentDashboard({
           </Card>
         </div>
 
+        {tutor && (
+          <Card className="shadow-lg bg-gradient-to-r from-purple-50 to-pink-50 border-purple-200">
+            <CardContent className="p-4 md:p-6">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-lg shrink-0">
+                  {tutor.full_name?.charAt(0) || "П"}
+                </div>
+                <div>
+                  <p className="text-sm text-gray-600">Ваш преподаватель</p>
+                  <h3 className="text-lg font-semibold text-gray-900">{tutor.full_name || tutor.email}</h3>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         <Card className="shadow-lg">
           <CardHeader className="px-4 py-3 sm:p-6">
             <CardTitle className="text-base sm:text-lg md:text-xl flex items-center gap-2">
@@ -377,6 +415,16 @@ export function StudentDashboard({
                         {lesson.title || "Урок"}
                       </h4>
                       <p className="text-xs sm:text-sm text-gray-600">{formatActualTime(lesson.scheduled_at)}</p>
+                      {(lesson.lesson_link || student?.lesson_link) && (
+                        <a
+                          href={lesson.lesson_link || student?.lesson_link || "#"}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs text-blue-600 hover:text-blue-800 underline mt-1 inline-block"
+                        >
+                          Ссылка на урок
+                        </a>
+                      )}
                     </div>
                     <Badge variant="secondary" className="self-start sm:self-center shrink-0 text-xs">
                       {lesson.duration_minutes} мин

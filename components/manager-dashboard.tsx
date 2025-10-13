@@ -7,6 +7,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { DollarSign, TrendingUp, Users, Receipt } from "lucide-react"
 import { AddPaymentDialog } from "@/components/add-payment-dialog"
 import { PaymentsHistory } from "@/components/payments-history"
+import { Loader2 } from "lucide-react"
+import { AllStudentsList } from "@/components/all-students-list"
+import { ManagerEarningsHistory } from "@/components/manager-earnings-history"
 
 interface ManagerDashboardProps {
   userId: string
@@ -19,12 +22,14 @@ export function ManagerDashboard({ userId }: ManagerDashboardProps) {
     pendingPayments: 0,
     weekEarnings: 0,
   })
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     loadStats()
   }, [userId])
 
   async function loadStats() {
+    setLoading(true)
     const supabase = createBrowserClient()
 
     // Get week start date
@@ -59,164 +64,122 @@ export function ManagerDashboard({ userId }: ManagerDashboardProps) {
       pendingPayments: pendingCount || 0,
       weekEarnings,
     })
+    setLoading(false)
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 via-white to-blue-50 p-4 md:p-8">
       <div className="mx-auto max-w-7xl space-y-8">
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between animate-in fade-in slide-in-from-top-4 duration-500">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">Панель Менеджера</h1>
-            <p className="text-gray-600">Управление платежами и клиентами</p>
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-green-900 to-blue-900 bg-clip-text text-transparent">
+              Панель Менеджера
+            </h1>
+            <p className="mt-2 text-gray-600">Управление платежами и работа с клиентами</p>
           </div>
           <AddPaymentDialog onPaymentAdded={loadStats} managerId={userId} />
         </div>
 
-        {/* Stats Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="p-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+          <Card className="p-6 bg-gradient-to-br from-green-50 to-emerald-50 border-green-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
             <div className="flex items-center gap-4">
               <div className="rounded-full bg-green-100 p-3">
                 <DollarSign className="h-6 w-6 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Продажи за неделю</p>
-                <p className="text-2xl font-bold">{stats.weekSales} ₽</p>
+                <p className="text-sm font-medium text-green-700">Продажи за неделю</p>
+                <p className="text-3xl font-bold text-green-900">
+                  {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `${stats.weekSales} ₽`}
+                </p>
               </div>
             </div>
           </Card>
 
-          <Card className="p-6">
+          <Card className="p-6 bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
             <div className="flex items-center gap-4">
               <div className="rounded-full bg-blue-100 p-3">
                 <TrendingUp className="h-6 w-6 text-blue-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Заработок за неделю</p>
-                <p className="text-2xl font-bold">{stats.weekEarnings.toFixed(0)} ₽</p>
+                <p className="text-sm font-medium text-blue-700">Заработок за неделю</p>
+                <p className="text-3xl font-bold text-blue-900">
+                  {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `${stats.weekEarnings.toFixed(0)} ₽`}
+                </p>
+                <p className="text-xs text-blue-600 mt-1">500₽ + 5% от продаж</p>
               </div>
             </div>
           </Card>
 
-          <Card className="p-6">
+          <Card className="p-6 bg-gradient-to-br from-purple-50 to-pink-50 border-purple-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
             <div className="flex items-center gap-4">
               <div className="rounded-full bg-purple-100 p-3">
                 <Users className="h-6 w-6 text-purple-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Всего учеников</p>
-                <p className="text-2xl font-bold">{stats.totalStudents}</p>
+                <p className="text-sm font-medium text-purple-700">Всего учеников</p>
+                <p className="text-3xl font-bold text-purple-900">
+                  {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : stats.totalStudents}
+                </p>
               </div>
             </div>
           </Card>
 
-          <Card className="p-6">
+          <Card className="p-6 bg-gradient-to-br from-orange-50 to-amber-50 border-orange-200 hover:shadow-lg transition-all duration-300 hover:-translate-y-1">
             <div className="flex items-center gap-4">
               <div className="rounded-full bg-orange-100 p-3">
                 <Receipt className="h-6 w-6 text-orange-600" />
               </div>
               <div>
-                <p className="text-sm text-gray-600">Ожидают оплаты</p>
-                <p className="text-2xl font-bold">{stats.pendingPayments}</p>
+                <p className="text-sm font-medium text-orange-700">Ожидают оплаты</p>
+                <p className="text-3xl font-bold text-orange-900">
+                  {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : stats.pendingPayments}
+                </p>
               </div>
             </div>
           </Card>
         </div>
 
-        {/* Main Content */}
-        <Tabs defaultValue="payments" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="payments">Платежи</TabsTrigger>
-            <TabsTrigger value="students">Ученики</TabsTrigger>
-            <TabsTrigger value="earnings">Мой заработок</TabsTrigger>
+        <Tabs defaultValue="payments" className="space-y-6 animate-in fade-in duration-1000">
+          <TabsList className="bg-white shadow-sm border">
+            <TabsTrigger
+              value="payments"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
+            >
+              Платежи
+            </TabsTrigger>
+            <TabsTrigger
+              value="students"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
+            >
+              Ученики
+            </TabsTrigger>
+            <TabsTrigger
+              value="earnings"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-green-600 data-[state=active]:to-blue-600 data-[state=active]:text-white"
+            >
+              Мой заработок
+            </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="payments">
+          <TabsContent value="payments" className="animate-in fade-in slide-in-from-bottom-2 duration-500">
             <PaymentsHistory managerId={userId} />
           </TabsContent>
 
-          <TabsContent value="students">
-            <Card className="p-6">
+          <TabsContent value="students" className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <Card className="p-6 bg-gradient-to-br from-white to-slate-50">
               <h3 className="mb-4 text-lg font-semibold">Все ученики</h3>
               <AllStudentsList />
             </Card>
           </TabsContent>
 
-          <TabsContent value="earnings">
-            <Card className="p-6">
+          <TabsContent value="earnings" className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <Card className="p-6 bg-gradient-to-br from-white to-slate-50">
               <h3 className="mb-4 text-lg font-semibold">История заработка</h3>
               <ManagerEarningsHistory managerId={userId} />
             </Card>
           </TabsContent>
         </Tabs>
       </div>
-    </div>
-  )
-}
-
-function AllStudentsList() {
-  const [students, setStudents] = useState<any[]>([])
-
-  useEffect(() => {
-    loadStudents()
-  }, [])
-
-  async function loadStudents() {
-    const supabase = createBrowserClient()
-    const { data } = await supabase.from("students").select("*, profiles(full_name)").order("name")
-
-    setStudents(data || [])
-  }
-
-  return (
-    <div className="space-y-2">
-      {students.map((student) => (
-        <div key={student.id} className="flex items-center justify-between rounded-lg border p-4">
-          <div>
-            <p className="font-medium">{student.name}</p>
-            <p className="text-sm text-gray-600">Репетитор: {student.profiles?.full_name || "Не назначен"}</p>
-          </div>
-          <div className="text-right">
-            <p className="text-sm text-gray-600">Осталось уроков</p>
-            <p className="text-lg font-semibold">{student.remaining_lessons}</p>
-          </div>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-function ManagerEarningsHistory({ managerId }: { managerId: string }) {
-  const [earnings, setEarnings] = useState<any[]>([])
-
-  useEffect(() => {
-    loadEarnings()
-  }, [managerId])
-
-  async function loadEarnings() {
-    const supabase = createBrowserClient()
-    const { data } = await supabase
-      .from("manager_salaries")
-      .select("*")
-      .eq("manager_id", managerId)
-      .order("week_start", { ascending: false })
-
-    setEarnings(data || [])
-  }
-
-  return (
-    <div className="space-y-2">
-      {earnings.map((earning) => (
-        <div key={earning.id} className="flex items-center justify-between rounded-lg border p-4">
-          <div>
-            <p className="font-medium">Неделя {new Date(earning.week_start).toLocaleDateString("ru-RU")}</p>
-            <p className="text-sm text-gray-600">
-              Продажи: {earning.sales_amount} ₽ | Комиссия: {earning.commission} ₽
-            </p>
-          </div>
-          <p className="text-lg font-semibold text-green-600">{earning.total_salary} ₽</p>
-        </div>
-      ))}
     </div>
   )
 }

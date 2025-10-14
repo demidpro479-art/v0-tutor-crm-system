@@ -3,7 +3,8 @@ import { NextResponse, type NextRequest } from "next/server"
 
 export async function middleware(request: NextRequest) {
   const path = request.nextUrl.pathname
-  if (path.startsWith("/auth/")) {
+
+  if (path.startsWith("/auth")) {
     return NextResponse.next()
   }
 
@@ -20,7 +21,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value, options }) => request.cookies.set(name, value))
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           supabaseResponse = NextResponse.next({
             request,
           })
@@ -53,9 +54,21 @@ export async function middleware(request: NextRequest) {
     .eq("user_id", userData.id)
     .single()
 
-  const activeRole = activeRoleData?.active_role
+  let activeRole = activeRoleData?.active_role
 
-  if (path === "/" || path === "/dashboard") {
+  if (!activeRole) {
+    const { data: userRoles } = await supabase.from("user_roles").select("role").eq("user_id", userData.id).limit(1)
+
+    if (userRoles && userRoles.length > 0) {
+      activeRole = userRoles[0].role
+      // Устанавливаем активную роль
+      await supabase
+        .from("user_active_role")
+        .upsert({ user_id: userData.id, active_role: activeRole, updated_at: new Date().toISOString() })
+    }
+  }
+
+  if (path === "/dashboard") {
     if (activeRole === "super_admin" || activeRole === "admin") {
       return NextResponse.redirect(new URL("/admin", request.url))
     } else if (activeRole === "tutor") {

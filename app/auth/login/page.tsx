@@ -31,12 +31,11 @@ export default function Page() {
       const { error } = await supabase.auth.signInWithPassword({
         email: tutorEmail,
         password: tutorPassword,
-        options: {
-          emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || `${window.location.origin}/dashboard`,
-        },
       })
       if (error) throw error
-      router.push("/dashboard")
+
+      router.push("/")
+      router.refresh()
     } catch (error: unknown) {
       setError(error instanceof Error ? error.message : "Ошибка входа")
     } finally {

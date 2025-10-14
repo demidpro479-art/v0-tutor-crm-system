@@ -1,51 +1,52 @@
--- ФИНАЛЬНАЯ РАБОЧАЯ СИСТЕМА РОЛЕЙ И УПРАВЛЕНИЯ
--- Этот скрипт НЕ трогает существующую таблицу users и её constraints
--- Использует только user_roles для множественных ролей
+-- ФИНАЛЬНОЕ ИСПРАВЛЕНИЕ С ПРАВИЛЬНЫМИ ТИПАМИ ДАННЫХ
+-- Таблица users использует INTEGER для id, не UUID
 
--- 1. Убедимся что таблицы user_roles и user_active_role существуют
+-- 1. Удаляем все конфликтующие функции
+DROP FUNCTION IF EXISTS get_user_id_from_auth(uuid) CASCADE;
+DROP FUNCTION IF EXISTS get_active_role(uuid) CASCADE;
+DROP FUNCTION IF EXISTS get_active_role(integer) CASCADE;
+DROP FUNCTION IF EXISTS set_active_role(uuid, text) CASCADE;
+DROP FUNCTION IF EXISTS set_active_role(integer, text) CASCADE;
+DROP FUNCTION IF EXISTS get_user_roles(uuid) CASCADE;
+DROP FUNCTION IF EXISTS add_user_role(uuid, text) CASCADE;
+DROP FUNCTION IF EXISTS complete_lesson(uuid) CASCADE;
+DROP FUNCTION IF EXISTS complete_lesson(integer) CASCADE;
+DROP FUNCTION IF EXISTS add_lessons_to_student(uuid, integer) CASCADE;
+DROP FUNCTION IF EXISTS deduct_lessons_from_student(uuid, integer) CASCADE;
+
+-- 2. Создаем таблицы если не существуют
 CREATE TABLE IF NOT EXISTS user_roles (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   role TEXT NOT NULL CHECK (role IN ('super_admin', 'admin', 'tutor', 'manager', 'student')),
   created_at TIMESTAMPTZ DEFAULT NOW(),
   UNIQUE(user_id, role)
 );
 
 CREATE TABLE IF NOT EXISTS user_active_role (
-  user_id UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  user_id INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   active_role TEXT NOT NULL CHECK (active_role IN ('super_admin', 'admin', 'tutor', 'manager', 'student')),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- 2. Создаем индексы для быстрого поиска
+-- 3. Создаем индексы
 CREATE INDEX IF NOT EXISTS idx_user_roles_user_id ON user_roles(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_roles_role ON user_roles(role);
 
--- 3. Функция для получения user_id по auth_user_id
+-- 4. Функция для получения user_id по auth_user_id (возвращает INTEGER)
 CREATE OR REPLACE FUNCTION get_user_id_from_auth(auth_uid UUID)
-RETURNS UUID AS $$
+RETURNS INTEGER AS $$
   SELECT id FROM users WHERE auth_user_id = auth_uid LIMIT 1;
 $$ LANGUAGE SQL STABLE;
 
--- 4. Функция для получения всех ролей пользователя
-CREATE OR REPLACE FUNCTION get_user_roles(p_user_id UUID)
-RETURNS TABLE(role TEXT) AS $$
-BEGIN
-  RETURN QUERY
-  SELECT ur.role
-  FROM user_roles ur
-  WHERE ur.user_id = p_user_id;
-END;
-$$ LANGUAGE plpgsql STABLE;
-
--- 5. Функция для получения активной роли
-CREATE OR REPLACE FUNCTION get_active_role(p_user_id UUID)
+-- 5. Функция для получения активной роли (принимает INTEGER, возвращает TEXT)
+CREATE OR REPLACE FUNCTION get_active_role(p_user_id INTEGER)
 RETURNS TEXT AS $$
-  SELECT active_role FROM user_active_role WHERE user_id = p_user_id;
+  SELECT active_role FROM user_active_role WHERE user_id = p_user_id LIMIT 1;
 $$ LANGUAGE SQL STABLE;
 
--- 6. Функция для установки активной роли
-CREATE OR REPLACE FUNCTION set_active_role(p_user_id UUID, p_role TEXT)
+-- 6. Функция для установки активной роли (принимает INTEGER)
+CREATE OR REPLACE FUNCTION set_active_role(p_user_id INTEGER, p_role TEXT)
 RETURNS VOID AS $$
 BEGIN
   -- Проверяем что у пользователя есть эта роль
@@ -62,7 +63,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- 7. Функция для добавления роли пользователю
-CREATE OR REPLACE FUNCTION add_user_role(p_user_id UUID, p_role TEXT)
+CREATE OR REPLACE FUNCTION add_user_role(p_user_id INTEGER, p_role TEXT)
 RETURNS VOID AS $$
 BEGIN
   INSERT INTO user_roles (user_id, role)
@@ -80,48 +81,41 @@ $$ LANGUAGE plpgsql;
 -- 8. Добавляем роли для главного администратора dimid0403@gmail.com
 DO $$
 DECLARE
-  v_user_id UUID;
-  v_auth_user_id UUID;
+  v_user_id INTEGER;
 BEGIN
-  -- Находим auth_user_id для dimid0403@gmail.com
-  SELECT id INTO v_auth_user_id
-  FROM auth.users
+  -- Находим user_id для dimid0403@gmail.com
+  SELECT id INTO v_user_id
+  FROM users
   WHERE email = 'dimid0403@gmail.com'
   LIMIT 1;
   
-  IF v_auth_user_id IS NOT NULL THEN
-    -- Находим user_id в таблице users
-    SELECT id INTO v_user_id
-    FROM users
-    WHERE auth_user_id = v_auth_user_id
-    LIMIT 1;
+  IF v_user_id IS NOT NULL THEN
+    -- Удаляем старые роли если есть
+    DELETE FROM user_roles WHERE user_id = v_user_id;
+    DELETE FROM user_active_role WHERE user_id = v_user_id;
     
-    IF v_user_id IS NOT NULL THEN
-      -- Добавляем все роли
-      PERFORM add_user_role(v_user_id, 'super_admin');
-      PERFORM add_user_role(v_user_id, 'admin');
-      PERFORM add_user_role(v_user_id, 'tutor');
-      PERFORM add_user_role(v_user_id, 'manager');
-      
-      -- Устанавливаем super_admin как активную роль
-      PERFORM set_active_role(v_user_id, 'super_admin');
-      
-      RAISE NOTICE 'Successfully added all roles to user: %', v_user_id;
-    ELSE
-      RAISE NOTICE 'User not found in users table for email: dimid0403@gmail.com';
-    END IF;
+    -- Добавляем все роли
+    PERFORM add_user_role(v_user_id, 'super_admin');
+    PERFORM add_user_role(v_user_id, 'admin');
+    PERFORM add_user_role(v_user_id, 'tutor');
+    PERFORM add_user_role(v_user_id, 'manager');
+    
+    -- Устанавливаем super_admin как активную роль
+    PERFORM set_active_role(v_user_id, 'super_admin');
+    
+    RAISE NOTICE 'Successfully added all roles to user: %', v_user_id;
   ELSE
-    RAISE NOTICE 'Auth user not found for email: dimid0403@gmail.com';
+    RAISE NOTICE 'User not found for email: dimid0403@gmail.com';
   END IF;
 END $$;
 
--- 9. Исправляем функцию завершения урока
-CREATE OR REPLACE FUNCTION complete_lesson(p_lesson_id UUID)
+-- 9. Функция завершения урока (принимает INTEGER)
+CREATE OR REPLACE FUNCTION complete_lesson(p_lesson_id INTEGER)
 RETURNS VOID AS $$
 DECLARE
-  v_student_id UUID;
-  v_tutor_id UUID;
-  v_lesson_cost DECIMAL;
+  v_student_id INTEGER;
+  v_tutor_id INTEGER;
+  v_lesson_cost NUMERIC;
 BEGIN
   -- Получаем данные урока
   SELECT student_id, tutor_id, lesson_cost
@@ -136,7 +130,7 @@ BEGIN
   -- Обновляем статус урока
   UPDATE lessons
   SET status = 'completed',
-      updated_at = NOW()
+      completed_at = NOW()
   WHERE id = p_lesson_id;
   
   -- Уменьшаем количество оставшихся уроков у студента
@@ -145,28 +139,18 @@ BEGIN
       updated_at = NOW()
   WHERE id = v_student_id;
   
-  -- Начисляем заработок репетитору (если указан)
+  -- Начисляем заработок репетитору если указан
   IF v_tutor_id IS NOT NULL AND v_lesson_cost > 0 THEN
-    -- Получаем ставку репетитора
-    DECLARE
-      v_tutor_rate DECIMAL;
-    BEGIN
-      SELECT hourly_rate INTO v_tutor_rate
-      FROM tutor_settings
-      WHERE tutor_id = v_tutor_id;
-      
-      IF v_tutor_rate IS NOT NULL THEN
-        INSERT INTO tutor_earnings (tutor_id, lesson_id, amount, status, earned_at)
-        VALUES (v_tutor_id, p_lesson_id, v_tutor_rate, 'pending', NOW());
-      END IF;
-    END;
+    INSERT INTO tutor_earnings (tutor_id, lesson_id, amount, status, earned_at)
+    VALUES (v_tutor_id, p_lesson_id, v_lesson_cost, 'pending', NOW())
+    ON CONFLICT DO NOTHING;
   END IF;
 END;
 $$ LANGUAGE plpgsql;
 
 -- 10. Функция для добавления уроков студенту
 CREATE OR REPLACE FUNCTION add_lessons_to_student(
-  p_student_id UUID,
+  p_student_id INTEGER,
   p_lessons_count INTEGER
 )
 RETURNS VOID AS $$
@@ -181,7 +165,7 @@ $$ LANGUAGE plpgsql;
 
 -- 11. Функция для списания уроков у студента
 CREATE OR REPLACE FUNCTION deduct_lessons_from_student(
-  p_student_id UUID,
+  p_student_id INTEGER,
   p_lessons_count INTEGER
 )
 RETURNS VOID AS $$
@@ -193,7 +177,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- 12. Включаем RLS для новых таблиц
+-- 12. Включаем RLS
 ALTER TABLE user_roles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_active_role ENABLE ROW LEVEL SECURITY;
 

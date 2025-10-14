@@ -23,19 +23,33 @@ CREATE TABLE IF NOT EXISTS user_active_role (
 );
 
 -- Устанавливаем главного администратора (dimid0403@gmail.com)
--- Сначала создаем пользователя если его нет
-INSERT INTO users (email, full_name, role, is_active)
-VALUES ('dimid0403@gmail.com', 'Главный Администратор', 'super_admin', true)
-ON CONFLICT (email) DO UPDATE SET role = 'super_admin', is_active = true;
-
--- Добавляем все роли для главного администратора
 DO $$
 DECLARE
   super_admin_id UUID;
+  super_admin_email TEXT := 'dimid0403@gmail.com';
 BEGIN
-  SELECT id INTO super_admin_id FROM users WHERE email = 'dimid0403@gmail.com';
+  -- Ищем пользователя по email в auth.users
+  SELECT id INTO super_admin_id 
+  FROM auth.users 
+  WHERE email = super_admin_email;
   
+  -- Если пользователь найден в auth.users
   IF super_admin_id IS NOT NULL THEN
+    -- Проверяем есть ли он в таблице users
+    IF NOT EXISTS (SELECT 1 FROM users WHERE auth_user_id = super_admin_id) THEN
+      -- Создаем запись в users
+      INSERT INTO users (auth_user_id, email, full_name, role, is_active)
+      VALUES (super_admin_id, super_admin_email, 'Главный Администратор', 'super_admin', true);
+    ELSE
+      -- Обновляем существующую запись
+      UPDATE users 
+      SET role = 'super_admin', is_active = true, full_name = 'Главный Администратор'
+      WHERE auth_user_id = super_admin_id;
+    END IF;
+    
+    -- Получаем ID из таблицы users
+    SELECT id INTO super_admin_id FROM users WHERE auth_user_id = super_admin_id;
+    
     -- Добавляем все роли
     INSERT INTO user_roles (user_id, role) VALUES (super_admin_id, 'super_admin') ON CONFLICT DO NOTHING;
     INSERT INTO user_roles (user_id, role) VALUES (super_admin_id, 'admin') ON CONFLICT DO NOTHING;
@@ -46,6 +60,10 @@ BEGIN
     INSERT INTO user_active_role (user_id, active_role) 
     VALUES (super_admin_id, 'super_admin')
     ON CONFLICT (user_id) DO UPDATE SET active_role = 'super_admin';
+    
+    RAISE NOTICE 'Super admin setup completed for %', super_admin_email;
+  ELSE
+    RAISE NOTICE 'User % not found in auth.users. Please create account first.', super_admin_email;
   END IF;
 END $$;
 

@@ -30,40 +30,60 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (user) {
-    const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+    const { data: activeRoleData } = await supabase
+      .from("user_active_role")
+      .select("active_role")
+      .eq("user_id", user.id)
+      .single()
+
+    const activeRole = activeRoleData?.active_role
 
     const path = request.nextUrl.pathname
 
-    // Перенаправление на соответствующий дашборд в зависимости от роли
+    // Перенаправление на соответствующий дашборд в зависимости от активной роли
     if (path === "/" || path === "/dashboard") {
-      if (profile?.role === "admin") {
+      if (activeRole === "super_admin" || activeRole === "admin") {
         return NextResponse.redirect(new URL("/admin", request.url))
-      } else if (profile?.role === "tutor") {
+      } else if (activeRole === "tutor") {
         return NextResponse.redirect(new URL("/tutor", request.url))
-      } else if (profile?.role === "manager") {
+      } else if (activeRole === "manager") {
         return NextResponse.redirect(new URL("/manager", request.url))
-      } else if (profile?.role === "student") {
+      } else if (activeRole === "student") {
         return NextResponse.redirect(new URL("/student", request.url))
       }
     }
 
+    const { data: userRoles } = await supabase.from("user_roles").select("role").eq("user_id", user.id)
+
+    const roles = userRoles?.map((r) => r.role) || []
+
     // Защита роутов по ролям
-    if (path.startsWith("/admin") && profile?.role !== "admin") {
+    if (path.startsWith("/admin") && !roles.includes("admin") && !roles.includes("super_admin")) {
       return NextResponse.redirect(new URL("/", request.url))
     }
-    if (path.startsWith("/tutor") && profile?.role !== "tutor" && profile?.role !== "admin") {
+    if (
+      path.startsWith("/tutor") &&
+      !roles.includes("tutor") &&
+      !roles.includes("admin") &&
+      !roles.includes("super_admin")
+    ) {
       return NextResponse.redirect(new URL("/", request.url))
     }
-    if (path.startsWith("/manager") && profile?.role !== "manager" && profile?.role !== "admin") {
+    if (
+      path.startsWith("/manager") &&
+      !roles.includes("manager") &&
+      !roles.includes("admin") &&
+      !roles.includes("super_admin")
+    ) {
       return NextResponse.redirect(new URL("/", request.url))
     }
-    if (path.startsWith("/student") && profile?.role !== "student") {
+    if (path.startsWith("/student") && !roles.includes("student")) {
       return NextResponse.redirect(new URL("/", request.url))
     }
   } else {
     // Если пользователь не авторизован, перенаправляем на страницу входа
     if (!request.nextUrl.pathname.startsWith("/auth") && request.nextUrl.pathname !== "/") {
-      return NextResponse.redirect(new URL("/auth/login", request.url))
+      return NextResponse.redirect(new URL("/auth/sign-in", request.url))
     }
   }
 

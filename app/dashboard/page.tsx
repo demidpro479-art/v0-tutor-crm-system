@@ -7,6 +7,8 @@ import { Navigation } from "@/components/navigation"
 import { RecurringScheduleManager } from "@/components/recurring-schedule-manager"
 import { UndoActionPanel } from "@/components/undo-action-panel"
 
+export const dynamic = "force-dynamic"
+
 export default async function DashboardPage() {
   const supabase = await createClient()
 

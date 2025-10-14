@@ -30,17 +30,22 @@ export async function middleware(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (user) {
+    const { data: userData } = await supabase.from("users").select("id").eq("auth_user_id", user.id).single()
+
+    if (!userData) {
+      return NextResponse.redirect(new URL("/auth/login", request.url))
+    }
+
     const { data: activeRoleData } = await supabase
       .from("user_active_role")
       .select("active_role")
-      .eq("user_id", user.id)
+      .eq("user_id", userData.id)
       .single()
 
     const activeRole = activeRoleData?.active_role
 
     const path = request.nextUrl.pathname
 
-    // Перенаправление на соответствующий дашборд в зависимости от активной роли
     if (path === "/" || path === "/dashboard") {
       if (activeRole === "super_admin" || activeRole === "admin") {
         return NextResponse.redirect(new URL("/admin", request.url))
@@ -53,11 +58,10 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    const { data: userRoles } = await supabase.from("user_roles").select("role").eq("user_id", user.id)
+    const { data: userRoles } = await supabase.from("user_roles").select("role").eq("user_id", userData.id)
 
     const roles = userRoles?.map((r) => r.role) || []
 
-    // Защита роутов по ролям
     if (path.startsWith("/admin") && !roles.includes("admin") && !roles.includes("super_admin")) {
       return NextResponse.redirect(new URL("/", request.url))
     }
@@ -83,7 +87,7 @@ export async function middleware(request: NextRequest) {
   } else {
     // Если пользователь не авторизован, перенаправляем на страницу входа
     if (!request.nextUrl.pathname.startsWith("/auth") && request.nextUrl.pathname !== "/") {
-      return NextResponse.redirect(new URL("/auth/sign-in", request.url))
+      return NextResponse.redirect(new URL("/auth/login", request.url))
     }
   }
 

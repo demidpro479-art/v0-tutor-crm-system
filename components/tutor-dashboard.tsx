@@ -29,40 +29,77 @@ export function TutorDashboard({ userId }: TutorDashboardProps) {
   }, [userId])
 
   async function loadStats() {
-    const supabase = createBrowserClient()
+    try {
+      const supabase = createBrowserClient()
 
-    // Get tutor's students
-    const { data: students } = await supabase.from("students").select("id").eq("tutor_id", userId)
+      const { data: students, error: studentsError } = await supabase
+        .from("students")
+        .select("id")
+        .eq("tutor_id", userId)
+        .eq("is_active", true)
 
-    const studentIds = students?.map((s) => s.id) || []
+      if (studentsError) {
+        console.error("[v0] Error loading students:", studentsError)
+        setLoading(false)
+        return
+      }
 
-    // Get completed lessons count
-    const { count: completedCount } = await supabase
-      .from("lessons")
-      .select("*", { count: "only", head: true })
-      .in("student_id", studentIds)
-      .eq("status", "completed")
+      const studentIds = students?.map((s) => s.id) || []
 
-    // Get upcoming lessons count
-    const { count: upcomingCount } = await supabase
-      .from("lessons")
-      .select("*", { count: "only", head: true })
-      .in("student_id", studentIds)
-      .eq("status", "scheduled")
-      .gte("scheduled_at", new Date().toISOString())
+      if (studentIds.length === 0) {
+        setStats({
+          totalStudents: 0,
+          completedLessons: 0,
+          earnings: 0,
+          upcomingLessons: 0,
+        })
+        setLoading(false)
+        return
+      }
 
-    // Get earnings
-    const { data: earnings } = await supabase.from("tutor_earnings").select("amount").eq("tutor_id", userId)
+      const { count: completedCount, error: completedError } = await supabase
+        .from("lessons")
+        .select("*", { count: "exact", head: true })
+        .in("student_id", studentIds)
+        .eq("status", "completed")
 
-    const totalEarnings = earnings?.reduce((sum, e) => sum + e.amount, 0) || 0
+      if (completedError) {
+        console.error("[v0] Error loading completed lessons:", completedError)
+      }
 
-    setStats({
-      totalStudents: students?.length || 0,
-      completedLessons: completedCount || 0,
-      earnings: totalEarnings,
-      upcomingLessons: upcomingCount || 0,
-    })
-    setLoading(false)
+      const { count: upcomingCount, error: upcomingError } = await supabase
+        .from("lessons")
+        .select("*", { count: "exact", head: true })
+        .in("student_id", studentIds)
+        .eq("status", "scheduled")
+        .gte("scheduled_at", new Date().toISOString())
+
+      if (upcomingError) {
+        console.error("[v0] Error loading upcoming lessons:", upcomingError)
+      }
+
+      const { data: earnings, error: earningsError } = await supabase
+        .from("tutor_earnings")
+        .select("amount")
+        .eq("tutor_id", userId)
+
+      if (earningsError) {
+        console.error("[v0] Error loading earnings:", earningsError)
+      }
+
+      const totalEarnings = earnings?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0
+
+      setStats({
+        totalStudents: students?.length || 0,
+        completedLessons: completedCount || 0,
+        earnings: totalEarnings,
+        upcomingLessons: upcomingCount || 0,
+      })
+    } catch (error) {
+      console.error("[v0] Error in loadStats:", error)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -115,7 +152,7 @@ export function TutorDashboard({ userId }: TutorDashboardProps) {
               <div>
                 <p className="text-sm font-medium text-purple-700">Заработано</p>
                 <p className="text-3xl font-bold text-purple-900">
-                  {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `${stats.earnings} ₽`}
+                  {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `${stats.earnings.toFixed(0)} ₽`}
                 </p>
               </div>
             </div>

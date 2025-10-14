@@ -5,6 +5,8 @@ import { Navigation } from "@/components/navigation"
 import { NotificationsPanel } from "@/components/notifications-panel"
 import { EnhancedStatistics } from "@/components/enhanced-statistics"
 
+export const dynamic = "force-dynamic"
+
 export default async function CalendarPage() {
   const supabase = await createClient()
 

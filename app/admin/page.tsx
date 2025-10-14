@@ -16,14 +16,18 @@ export default async function AdminPage() {
       redirect("/auth/login")
     }
 
-    // Проверяем роль пользователя
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("*, user:users!inner(*)")
-      .eq("id", user.id)
-      .single()
+    const { data: userData } = await supabase.from("users").select("id").eq("auth_user_id", user.id).single()
 
-    if (!profile?.user || profile.user.role !== "admin") {
+    if (!userData) {
+      redirect("/auth/login")
+    }
+
+    const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userData.id)
+
+    const userRoles = roles?.map((r) => r.role) || []
+
+    // Проверяем что у пользователя есть роль admin или super_admin
+    if (!userRoles.includes("admin") && !userRoles.includes("super_admin")) {
       redirect("/dashboard")
     }
 
@@ -36,29 +40,17 @@ export default async function AdminPage() {
     // Получаем всех учеников с репетиторами
     const { data: students } = await supabase
       .from("students")
-      .select("*, tutor:users(*)")
+      .select("*, tutor:users!tutor_id(*)")
       .order("created_at", { ascending: false })
 
-    // Получаем статистику за текущий месяц
-    const now = new Date()
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1)
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
-
-    const { data: monthlyStats } = await supabase.rpc("get_admin_monthly_stats", {
-      month_start: monthStart.toISOString().split("T")[0],
-      month_end: monthEnd.toISOString().split("T")[0],
-    })
-
-    return <AdminDashboard users={users || []} students={students || []} monthlyStats={monthlyStats} />
+    return <AdminDashboard userId={userData.id} users={users || []} students={students || []} />
   } catch (error) {
     console.error("[v0] Error in AdminPage:", error)
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
         <div className="max-w-md rounded-lg border border-red-200 bg-red-50 p-6 text-center">
-          <h1 className="mb-2 text-xl font-semibold text-red-900">Configuration Error</h1>
-          <p className="text-sm text-red-700">
-            Supabase is not properly configured. Please check your environment variables.
-          </p>
+          <h1 className="mb-2 text-xl font-semibold text-red-900">Ошибка конфигурации</h1>
+          <p className="text-sm text-red-700">Supabase не настроен правильно. Проверьте переменные окружения.</p>
         </div>
       </div>
     )

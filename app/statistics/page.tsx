@@ -6,6 +6,8 @@ import { LessonsChart } from "@/components/lessons-chart"
 import { StudentAnalytics } from "@/components/student-analytics"
 import { Navigation } from "@/components/navigation"
 
+export const dynamic = "force-dynamic"
+
 export default async function StatisticsPage() {
   const supabase = await createClient()
 

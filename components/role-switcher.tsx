@@ -70,15 +70,32 @@ export function RoleSwitcher() {
       } = await supabase.auth.getUser()
       if (!user) return
 
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_user_id", user.id)
+        .single()
+
+      if (userError || !userData) {
+        console.error("User not found in users table:", userError)
+        return
+      }
+
+      const userId = userData.id
+
       // Получаем все роли пользователя
-      const { data: userRoles, error: rolesError } = await supabase.rpc("get_user_roles", { p_user_id: user.id })
+      const { data: userRoles, error: rolesError } = await supabase.rpc("get_user_roles", {
+        p_user_id: userId,
+      })
 
       if (rolesError) throw rolesError
 
       setRoles(userRoles || [])
 
       // Получаем активную роль
-      const { data: activeRoleData, error: activeError } = await supabase.rpc("get_active_role", { p_user_id: user.id })
+      const { data: activeRoleData, error: activeError } = await supabase.rpc("get_active_role", {
+        p_user_id: userId,
+      })
 
       if (activeError) throw activeError
 
@@ -98,8 +115,19 @@ export function RoleSwitcher() {
       } = await supabase.auth.getUser()
       if (!user) return
 
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("id")
+        .eq("auth_user_id", user.id)
+        .single()
+
+      if (userError || !userData) {
+        console.error("User not found in users table:", userError)
+        return
+      }
+
       const { error } = await supabase.rpc("switch_active_role", {
-        p_user_id: user.id,
+        p_user_id: userData.id,
         p_new_role: newRole,
       })
 

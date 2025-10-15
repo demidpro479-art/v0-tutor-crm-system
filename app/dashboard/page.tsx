@@ -31,18 +31,12 @@ export default async function DashboardPage() {
   if (!userData) {
     console.log("[v0] Dashboard - Creating user profile for:", user.email)
 
-    // Создаем профиль пользователя
-    const { data: newUser, error: createError } = await supabase
-      .from("users")
-      .insert({
-        auth_user_id: user.id,
-        email: user.email,
-        full_name: user.email?.split("@")[0] || "User",
-        role: "student", // Роль по умолчанию
-        created_at: new Date().toISOString(),
-      })
-      .select("id")
-      .single()
+    const { data: newUserId, error: createError } = await supabase.rpc("create_user_profile", {
+      p_auth_user_id: user.id,
+      p_email: user.email || "",
+      p_full_name: user.email?.split("@")[0] || "User",
+      p_role: "student",
+    })
 
     if (createError) {
       console.error("[v0] Dashboard - Error creating user:", createError)
@@ -65,7 +59,7 @@ export default async function DashboardPage() {
       )
     }
 
-    userData = newUser
+    userData = { id: newUserId }
     console.log("[v0] Dashboard - User profile created:", userData)
   }
 

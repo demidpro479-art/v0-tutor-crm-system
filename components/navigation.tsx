@@ -5,8 +5,9 @@ import { createClient } from "@/lib/supabase/client"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
 import { Home, Calendar, BarChart3, LogOut, Menu, X } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
+import { RoleSwitcher } from "@/components/role-switcher"
 
 const navigation = [
   { name: "Дашборд", href: "/dashboard", icon: Home },
@@ -16,8 +17,30 @@ const navigation = [
 
 export function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  const [userRoles, setUserRoles] = useState<string[]>([])
   const router = useRouter()
   const pathname = usePathname()
+
+  useEffect(() => {
+    const fetchUserRoles = async () => {
+      const supabase = createClient()
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+
+      if (user) {
+        const { data: userData } = await supabase.from("users").select("id").eq("auth_user_id", user.id).single()
+
+        if (userData) {
+          const { data: roles } = await supabase.from("user_roles").select("role").eq("user_id", userData.id)
+
+          setUserRoles(roles?.map((r) => r.role) || [])
+        }
+      }
+    }
+
+    fetchUserRoles()
+  }, [])
 
   const handleSignOut = async () => {
     const supabase = createClient()
@@ -35,6 +58,11 @@ export function Navigation() {
           </div>
           <nav className="flex flex-1 flex-col">
             <ul role="list" className="flex flex-1 flex-col gap-y-7">
+              {userRoles.length > 1 && (
+                <li>
+                  <RoleSwitcher />
+                </li>
+              )}
               <li>
                 <ul role="list" className="-mx-2 space-y-1">
                   {navigation.map((item) => {
@@ -103,6 +131,11 @@ export function Navigation() {
                   </div>
                   <nav className="flex flex-1 flex-col">
                     <ul role="list" className="flex flex-1 flex-col gap-y-7">
+                      {userRoles.length > 1 && (
+                        <li>
+                          <RoleSwitcher />
+                        </li>
+                      )}
                       <li>
                         <ul role="list" className="-mx-2 space-y-1">
                           {navigation.map((item) => {

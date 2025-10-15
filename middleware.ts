@@ -35,75 +35,8 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (!user) {
-    if (path !== "/") {
-      return NextResponse.redirect(new URL("/auth/login", request.url))
-    }
-    return supabaseResponse
-  }
-
-  const { data: userData } = await supabase.from("users").select("id").eq("auth_user_id", user.id).single()
-
-  if (!userData) {
+  if (!user && path !== "/") {
     return NextResponse.redirect(new URL("/auth/login", request.url))
-  }
-
-  const { data: activeRoleData } = await supabase
-    .from("user_active_role")
-    .select("active_role")
-    .eq("user_id", userData.id)
-    .single()
-
-  let activeRole = activeRoleData?.active_role
-
-  if (!activeRole) {
-    const { data: userRoles } = await supabase.from("user_roles").select("role").eq("user_id", userData.id).limit(1)
-
-    if (userRoles && userRoles.length > 0) {
-      activeRole = userRoles[0].role
-      // Устанавливаем активную роль
-      await supabase
-        .from("user_active_role")
-        .upsert({ user_id: userData.id, active_role: activeRole, updated_at: new Date().toISOString() })
-    }
-  }
-
-  if (path === "/dashboard") {
-    if (activeRole === "super_admin" || activeRole === "admin") {
-      return NextResponse.redirect(new URL("/admin", request.url))
-    } else if (activeRole === "tutor") {
-      return NextResponse.redirect(new URL("/tutor", request.url))
-    } else if (activeRole === "manager") {
-      return NextResponse.redirect(new URL("/manager", request.url))
-    } else if (activeRole === "student") {
-      return NextResponse.redirect(new URL("/student", request.url))
-    }
-  }
-
-  const { data: userRoles } = await supabase.from("user_roles").select("role").eq("user_id", userData.id)
-  const roles = userRoles?.map((r) => r.role) || []
-
-  if (path.startsWith("/admin") && !roles.includes("admin") && !roles.includes("super_admin")) {
-    return NextResponse.redirect(new URL("/", request.url))
-  }
-  if (
-    path.startsWith("/tutor") &&
-    !roles.includes("tutor") &&
-    !roles.includes("admin") &&
-    !roles.includes("super_admin")
-  ) {
-    return NextResponse.redirect(new URL("/", request.url))
-  }
-  if (
-    path.startsWith("/manager") &&
-    !roles.includes("manager") &&
-    !roles.includes("admin") &&
-    !roles.includes("super_admin")
-  ) {
-    return NextResponse.redirect(new URL("/", request.url))
-  }
-  if (path.startsWith("/student") && !roles.includes("student")) {
-    return NextResponse.redirect(new URL("/", request.url))
   }
 
   return supabaseResponse

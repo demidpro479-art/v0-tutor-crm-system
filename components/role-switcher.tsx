@@ -24,31 +24,26 @@ const roleConfig = {
     label: "Главный Администратор",
     icon: Shield,
     color: "bg-gradient-to-r from-purple-500 to-pink-500",
-    path: "/admin",
   },
   admin: {
     label: "Администратор",
     icon: UserCog,
     color: "bg-gradient-to-r from-blue-500 to-cyan-500",
-    path: "/admin",
   },
   tutor: {
     label: "Репетитор",
     icon: GraduationCap,
     color: "bg-gradient-to-r from-green-500 to-emerald-500",
-    path: "/tutor",
   },
   manager: {
     label: "Менеджер",
     icon: Briefcase,
     color: "bg-gradient-to-r from-orange-500 to-amber-500",
-    path: "/manager",
   },
   student: {
     label: "Ученик",
     icon: User,
     color: "bg-gradient-to-r from-indigo-500 to-purple-500",
-    path: "/student",
   },
 }
 
@@ -126,9 +121,10 @@ export function RoleSwitcher() {
         return
       }
 
-      const { error } = await supabase.rpc("switch_active_role", {
-        p_user_id: userData.id,
-        p_new_role: newRole,
+      const { error } = await supabase.from("user_active_role").upsert({
+        user_id: userData.id,
+        active_role: newRole,
+        updated_at: new Date().toISOString(),
       })
 
       if (error) throw error
@@ -136,8 +132,7 @@ export function RoleSwitcher() {
       setActiveRole(newRole)
       toast.success(`Переключено на роль: ${roleConfig[newRole as keyof typeof roleConfig].label}`)
 
-      // Перенаправляем на соответствующую страницу
-      router.push(roleConfig[newRole as keyof typeof roleConfig].path)
+      router.push("/dashboard")
       router.refresh()
     } catch (error) {
       console.error("Error switching role:", error)

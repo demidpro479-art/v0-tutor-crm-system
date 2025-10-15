@@ -5,30 +5,30 @@
 
 /* Голубая технологичная цветовая схема */
 :root {
-  --background: oklch(0.99 0.005 240);
-  --foreground: oklch(0.15 0.02 240);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.15 0.02 240);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.15 0.02 240);
-  --primary: oklch(0.55 0.18 240);
-  --primary-foreground: oklch(0.99 0.005 240);
-  --secondary: oklch(0.92 0.02 240);
-  --secondary-foreground: oklch(0.15 0.02 240);
-  --muted: oklch(0.95 0.01 240);
-  --muted-foreground: oklch(0.5 0.02 240);
-  --accent: oklch(0.65 0.2 220);
-  --accent-foreground: oklch(0.99 0.005 240);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: oklch(0.99 0.005 240);
-  --border: oklch(0.88 0.02 240);
-  --input: oklch(0.88 0.02 240);
-  --ring: oklch(0.55 0.18 240);
-  --chart-1: oklch(0.55 0.18 240);
-  --chart-2: oklch(0.65 0.2 220);
-  --chart-3: oklch(0.6 0.15 200);
-  --chart-4: oklch(0.7 0.18 260);
-  --chart-5: oklch(0.5 0.16 280);
+  --background: 252 252 253;
+  --foreground: 15 15 17;
+  --card: 255 255 255;
+  --card-foreground: 15 15 17;
+  --popover: 255 255 255;
+  --popover-foreground: 15 15 17;
+  --primary: 59 130 246;
+  --primary-foreground: 252 252 253;
+  --secondary: 241 245 249;
+  --secondary-foreground: 15 15 17;
+  --muted: 248 250 252;
+  --muted-foreground: 100 116 139;
+  --accent: 56 189 248;
+  --accent-foreground: 252 252 253;
+  --destructive: 239 68 68;
+  --destructive-foreground: 252 252 253;
+  --border: 226 232 240;
+  --input: 226 232 240;
+  --ring: 59 130 246;
+  --chart-1: 59 130 246;
+  --chart-2: 56 189 248;
+  --chart-3: 14 165 233;
+  --chart-4: 99 102 241;
+  --chart-5: 139 92 246;
   --radius: 0.75rem;
   --sidebar: oklch(1 0 0);
   --sidebar-foreground: oklch(0.145 0 0);
@@ -41,42 +41,42 @@
 }
 
 .dark {
-  --background: oklch(0.12 0.02 240);
-  --foreground: oklch(0.95 0.01 240);
-  --card: oklch(0.15 0.02 240);
-  --card-foreground: oklch(0.95 0.01 240);
-  --popover: oklch(0.15 0.02 240);
-  --popover-foreground: oklch(0.95 0.01 240);
-  --primary: oklch(0.65 0.2 240);
-  --primary-foreground: oklch(0.12 0.02 240);
-  --secondary: oklch(0.22 0.03 240);
-  --secondary-foreground: oklch(0.95 0.01 240);
-  --muted: oklch(0.2 0.02 240);
-  --muted-foreground: oklch(0.65 0.02 240);
-  --accent: oklch(0.7 0.22 220);
-  --accent-foreground: oklch(0.12 0.02 240);
-  --destructive: oklch(0.5 0.2 27.325);
-  --destructive-foreground: oklch(0.95 0.01 240);
-  --border: oklch(0.25 0.03 240);
-  --input: oklch(0.25 0.03 240);
-  --ring: oklch(0.65 0.2 240);
-  --chart-1: oklch(0.65 0.2 240);
-  --chart-2: oklch(0.7 0.22 220);
-  --chart-3: oklch(0.6 0.18 200);
-  --chart-4: oklch(0.75 0.2 260);
-  --chart-5: oklch(0.55 0.18 280);
+  --background: 15 23 42;
+  --foreground: 248 250 252;
+  --card: 30 41 59;
+  --card-foreground: 248 250 252;
+  --popover: 30 41 59;
+  --popover-foreground: 248 250 252;
+  --primary: 56 189 248;
+  --primary-foreground: 15 23 42;
+  --secondary: 51 65 85;
+  --secondary-foreground: 248 250 252;
+  --muted: 51 65 85;
+  --muted-foreground: 148 163 184;
+  --accent: 99 102 241;
+  --accent-foreground: 15 23 42;
+  --destructive: 220 38 38;
+  --destructive-foreground: 248 250 252;
+  --border: 51 65 85;
+  --input: 51 65 85;
+  --ring: 56 189 248;
+  --chart-1: 56 189 248;
+  --chart-2: 99 102 241;
+  --chart-3: 14 165 233;
+  --chart-4: 139 92 246;
+  --chart-5: 168 85 247;
   --sidebar: oklch(0.145 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.985 0 0);
-  --sidebar-primary-foreground: oklch(0.205 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
   --sidebar-accent: oklch(0.269 0 0);
   --sidebar-accent-foreground: oklch(0.985 0 0);
   --sidebar-border: oklch(0.269 0 0);
   --sidebar-ring: oklch(0.439 0 0);
 }
 
+/* Упростил @theme inline, убрал var() которые вызывали ошибки */
 @theme inline {
-  /* optional: --font-sans, --font-serif, --font-mono if they are applied in the layout.tsx */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -126,10 +126,6 @@
 
 /* Мобильная адаптация */
 @media (max-width: 768px) {
-  :root {
-    --radius: 0.5rem;
-  }
-
   button,
   [role="button"] {
     min-height: 44px;
@@ -141,24 +137,4 @@
   select {
     font-size: 16px;
   }
-}
-
-/* Скроллбар */
-::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
-}
-
-::-webkit-scrollbar-track {
-  background: var(--muted);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb {
-  background: var(--primary);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: var(--accent);
 }

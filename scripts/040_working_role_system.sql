@@ -171,36 +171,52 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- Упростил блок добавления ролей - теперь использует auth_user_id напрямую
 -- Добавляем роли для главного администратора dimid0403@gmail.com
--- Сначала находим user_id по email из таблицы users
 DO $$
 DECLARE
+  v_auth_user_id UUID;
   v_user_id INTEGER;
 BEGIN
-  -- Находим пользователя по email
-  SELECT id INTO v_user_id
-  FROM users
+  -- Находим auth_user_id по email из auth.users
+  SELECT id INTO v_auth_user_id
+  FROM auth.users
   WHERE email = 'dimid0403@gmail.com';
   
-  IF v_user_id IS NOT NULL THEN
-    -- Удаляем существующие роли
-    DELETE FROM user_roles WHERE user_id = v_user_id;
-    
-    -- Добавляем все 4 роли
-    INSERT INTO user_roles (user_id, role) VALUES
-      (v_user_id, 'super_admin'),
-      (v_user_id, 'admin'),
-      (v_user_id, 'tutor'),
-      (v_user_id, 'manager');
-    
-    -- Устанавливаем активную роль super_admin
-    INSERT INTO user_active_role (user_id, active_role)
-    VALUES (v_user_id, 'super_admin')
-    ON CONFLICT (user_id) 
-    DO UPDATE SET active_role = 'super_admin', updated_at = NOW();
-    
-    RAISE NOTICE 'Роли успешно добавлены для пользователя dimid0403@gmail.com (user_id: %)', v_user_id;
-  ELSE
-    RAISE NOTICE 'Пользователь dimid0403@gmail.com не найден в таблице users';
+  IF v_auth_user_id IS NULL THEN
+    RAISE NOTICE 'Пользователь dimid0403@gmail.com не найден в auth.users. Пожалуйста, зарегистрируйтесь сначала.';
+    RETURN;
   END IF;
+  
+  -- Находим или создаем запись в таблице users
+  SELECT id INTO v_user_id
+  FROM users
+  WHERE auth_user_id = v_auth_user_id;
+  
+  IF v_user_id IS NULL THEN
+    -- Создаем запись в users если её нет
+    INSERT INTO users (auth_user_id, email, name, role, created_at)
+    VALUES (v_auth_user_id, 'dimid0403@gmail.com', 'Главный Администратор', 'admin', NOW())
+    RETURNING id INTO v_user_id;
+    
+    RAISE NOTICE 'Создана запись в users для dimid0403@gmail.com (user_id: %)', v_user_id;
+  END IF;
+  
+  -- Удаляем существующие роли
+  DELETE FROM user_roles WHERE user_id = v_user_id;
+  
+  -- Добавляем все 4 роли
+  INSERT INTO user_roles (user_id, role) VALUES
+    (v_user_id, 'super_admin'),
+    (v_user_id, 'admin'),
+    (v_user_id, 'tutor'),
+    (v_user_id, 'manager');
+  
+  -- Устанавливаем активную роль super_admin
+  INSERT INTO user_active_role (user_id, active_role)
+  VALUES (v_user_id, 'super_admin')
+  ON CONFLICT (user_id) 
+  DO UPDATE SET active_role = 'super_admin', updated_at = NOW();
+  
+  RAISE NOTICE 'Роли успешно добавлены для пользователя dimid0403@gmail.com (user_id: %)', v_user_id;
 END $$;

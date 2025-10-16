@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -10,19 +10,66 @@ import { UsersTable } from "@/components/users-table"
 import { StudentsTable } from "@/components/students-table"
 import { AdminPaymentManagement } from "@/components/admin-payment-management"
 import { StudentsByTutor } from "@/components/students-by-tutor"
+import { createClient } from "@/lib/supabase/client"
 
-interface AdminDashboardProps {
-  users: any[]
-  students: any[]
-  monthlyStats: any
-}
-
-export function AdminDashboard({ users, students, monthlyStats }: AdminDashboardProps) {
+export function AdminDashboard() {
   const [showAddUser, setShowAddUser] = useState(false)
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [users, setUsers] = useState<any[]>([])
+  const [students, setStudents] = useState<any[]>([])
+  const [monthlyStats, setMonthlyStats] = useState<any>(null)
+
+  useEffect(() => {
+    async function loadData() {
+      const supabase = createClient()
+
+      const { data: usersData } = await supabase.from("users").select("*").order("created_at", { ascending: false })
+
+      const { data: studentsData } = await supabase
+        .from("students")
+        .select("*, tutor:users!students_tutor_id_fkey(full_name)")
+        .order("created_at", { ascending: false })
+
+      const startOfMonth = new Date()
+      startOfMonth.setDate(1)
+      startOfMonth.setHours(0, 0, 0, 0)
+
+      const { data: lessonsData } = await supabase
+        .from("lessons")
+        .select("*")
+        .eq("status", "completed")
+        .gte("lesson_date", startOfMonth.toISOString())
+
+      const totalRevenue = lessonsData?.reduce((sum, lesson) => sum + (lesson.lesson_cost || 0), 0) || 0
+      const tutorEarnings = lessonsData?.reduce((sum, lesson) => sum + (lesson.tutor_earnings || 0), 0) || 0
+      const netProfit = totalRevenue - tutorEarnings
+
+      setUsers(usersData || [])
+      setStudents(studentsData || [])
+      setMonthlyStats({
+        total_revenue: totalRevenue,
+        net_profit: netProfit,
+        completed_lessons: lessonsData?.length || 0,
+      })
+      setLoading(false)
+    }
+
+    loadData()
+  }, [])
 
   const tutors = users.filter((u) => u.role === "tutor")
   const managers = users.filter((u) => u.role === "manager")
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 p-4 md:p-8 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-slate-600">Загрузка данных...</p>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 p-4 md:p-8">

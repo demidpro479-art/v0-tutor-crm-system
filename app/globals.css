@@ -30,14 +30,15 @@
   --chart-4: 99 102 241;
   --chart-5: 139 92 246;
   --radius: 0.75rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Заменил oklch на rgb для sidebar цветов */
+  --sidebar: 251 251 252;
+  --sidebar-foreground: 37 37 39;
+  --sidebar-primary: 52 52 54;
+  --sidebar-primary-foreground: 251 251 252;
+  --sidebar-accent: 247 247 248;
+  --sidebar-accent-foreground: 52 52 54;
+  --sidebar-border: 235 235 237;
+  --sidebar-ring: 180 180 182;
 }
 
 .dark {
@@ -65,14 +66,15 @@
   --chart-3: 14 165 233;
   --chart-4: 139 92 246;
   --chart-5: 168 85 247;
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(0.269 0 0);
-  --sidebar-ring: oklch(0.439 0 0);
+  /* Заменил oklch на rgb для sidebar цветов в dark mode */
+  --sidebar: 52 52 54;
+  --sidebar-foreground: 251 251 252;
+  --sidebar-primary: 99 102 241;
+  --sidebar-primary-foreground: 251 251 252;
+  --sidebar-accent: 68 68 71;
+  --sidebar-accent-foreground: 251 251 252;
+  --sidebar-border: 68 68 71;
+  --sidebar-ring: 112 112 115;
 }
 
 @theme inline {

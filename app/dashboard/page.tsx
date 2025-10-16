@@ -85,21 +85,6 @@ export default async function DashboardPage() {
         .upsert({ user_id: userData.id, active_role: activeRole, updated_at: new Date().toISOString() })
 
       console.log("[v0] Dashboard - Set active role:", activeRole)
-    } else {
-      console.log("[v0] Dashboard - No roles found, adding default student role")
-
-      const { error: roleError } = await supabase.from("user_roles").insert({ user_id: userData.id, role: "student" })
-
-      if (roleError) {
-        console.error("[v0] Dashboard - Error adding default role:", roleError)
-      } else {
-        activeRole = "student"
-        await supabase
-          .from("user_active_role")
-          .upsert({ user_id: userData.id, active_role: activeRole, updated_at: new Date().toISOString() })
-
-        console.log("[v0] Dashboard - Default student role added")
-      }
     }
   }
 
@@ -118,6 +103,7 @@ export default async function DashboardPage() {
           </CardHeader>
           <CardContent>
             <p className="text-sm text-muted-foreground">Email: {user.email}</p>
+            <p className="text-sm text-muted-foreground mt-2">User ID: {userData.id}</p>
           </CardContent>
         </Card>
       </div>

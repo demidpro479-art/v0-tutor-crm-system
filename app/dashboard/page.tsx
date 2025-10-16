@@ -74,9 +74,17 @@ export default async function DashboardPage() {
   console.log("[v0] Dashboard - Active role:", activeRole)
 
   if (!activeRole) {
-    const { data: userRoles } = await supabase.from("user_roles").select("role").eq("user_id", userData.id)
+    const { data: userRoles, error: rolesError } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", userData.id)
 
-    console.log("[v0] Dashboard - User roles:", userRoles)
+    console.log("[v0] Dashboard - User roles query:", {
+      userId: userData.id,
+      userRoles,
+      rolesError,
+      rolesCount: userRoles?.length || 0,
+    })
 
     if (userRoles && userRoles.length > 0) {
       activeRole = userRoles[0].role

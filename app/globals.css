@@ -30,7 +30,6 @@
   --chart-4: 99 102 241;
   --chart-5: 139 92 246;
   --radius: 0.75rem;
-  /* Заменил oklch на rgb для sidebar цветов */
   --sidebar: 251 251 252;
   --sidebar-foreground: 37 37 39;
   --sidebar-primary: 52 52 54;
@@ -66,7 +65,6 @@
   --chart-3: 14 165 233;
   --chart-4: 139 92 246;
   --chart-5: 168 85 247;
-  /* Заменил oklch на rgb для sidebar цветов в dark mode */
   --sidebar: 52 52 54;
   --sidebar-foreground: 251 251 252;
   --sidebar-primary: 99 102 241;

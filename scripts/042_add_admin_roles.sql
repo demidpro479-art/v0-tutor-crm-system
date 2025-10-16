@@ -25,10 +25,7 @@ BEGIN
     ON CONFLICT (user_id) 
     DO UPDATE SET active_role = 'super_admin';
     
-    -- Обновляем роль в таблице users
-    UPDATE users
-    SET role = 'super_admin'
-    WHERE id = v_user_id;
+    -- Удалил UPDATE users.role чтобы избежать конфликта с check constraint
     
     RAISE NOTICE 'Роли успешно добавлены для пользователя %', v_user_id;
   ELSE

@@ -210,7 +210,7 @@ export function AdminDashboard() {
         </Tabs>
       </div>
 
-      <AddUserDialog open={showAddUser} onOpenChange={setShowAddUser} onUserAdded={loadData} />
+      <AddUserDialog open={showAddUser} onOpenChange={setShowAddUser} />
     </div>
   )
 }

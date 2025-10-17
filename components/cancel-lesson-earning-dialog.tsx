@@ -69,7 +69,7 @@ export function CancelLessonEarningDialog({ lessonId, onSuccess }: CancelLessonE
           Отменить начисление
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="bg-white">
         <DialogHeader>
           <DialogTitle>Отменить начисление за урок</DialogTitle>
           <DialogDescription>

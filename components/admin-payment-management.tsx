@@ -196,7 +196,7 @@ export function AdminPaymentManagement() {
 
       {/* Диалог отклонения выплаты */}
       <Dialog open={rejectDialogOpen} onOpenChange={setRejectDialogOpen}>
-        <DialogContent>
+        <DialogContent className="bg-white">
           <DialogHeader>
             <DialogTitle>Отклонить выплату</DialogTitle>
             <DialogDescription>Укажите причину отклонения выплаты. Сумма будет обнулена.</DialogDescription>

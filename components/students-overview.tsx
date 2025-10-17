@@ -24,7 +24,11 @@ interface Student {
   deleted_at: string | null
 }
 
-export function StudentsOverview() {
+interface StudentsOverviewProps {
+  tutorId?: string
+}
+
+export function StudentsOverview({ tutorId }: StudentsOverviewProps) {
   const [students, setStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
   const [showAddDialog, setShowAddDialog] = useState(false)
@@ -33,19 +37,21 @@ export function StudentsOverview() {
 
   useEffect(() => {
     fetchStudents()
-  }, [])
+  }, [tutorId])
 
   async function fetchStudents() {
     const supabase = createClient()
 
     try {
-      console.log("[v0] Загрузка учеников...")
+      console.log("[v0] Загрузка учеников для репетитора:", tutorId)
 
-      const { data, error } = await supabase
-        .from("students")
-        .select("*")
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false })
+      let query = supabase.from("students").select("*").is("deleted_at", null).order("created_at", { ascending: false })
+
+      if (tutorId) {
+        query = query.eq("tutor_id", tutorId)
+      }
+
+      const { data, error } = await query
 
       if (error) {
         console.error("[v0] Ошибка загрузки учеников:", error)

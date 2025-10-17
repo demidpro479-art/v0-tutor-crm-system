@@ -100,7 +100,7 @@ export function DeductLessonsDialog({ open, onOpenChange, students, onLessonsDed
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[500px] bg-white">
         <DialogHeader>
           <DialogTitle className="flex items-center space-x-2">
             <Minus className="h-5 w-5 text-orange-500" />

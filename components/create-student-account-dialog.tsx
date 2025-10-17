@@ -105,7 +105,7 @@ export function CreateStudentAccountDialog({ studentId, studentName, studentEmai
           <span className="sm:hidden">Аккаунт</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md bg-white">
         <DialogHeader>
           <DialogTitle>Создать учетную запись для ученика</DialogTitle>
           <DialogDescription>

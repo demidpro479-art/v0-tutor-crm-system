@@ -101,7 +101,7 @@ export function AddLessonDialog({ open, onOpenChange, students, onLessonAdded }:
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto animate-slide-in">
+      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto animate-slide-in bg-white">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <CalendarIcon className="h-5 w-5 text-primary" />

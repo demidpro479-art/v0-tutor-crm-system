@@ -27,12 +27,21 @@ export function AdminDashboard() {
   async function loadData() {
     const supabase = createClient()
 
-    const { data: usersData } = await supabase.from("users").select("*").order("created_at", { ascending: false })
+    console.log("[v0] AdminDashboard - Загрузка данных")
 
-    const { data: studentsData } = await supabase
+    const { data: usersData, error: usersError } = await supabase
+      .from("users")
+      .select("*")
+      .order("created_at", { ascending: false })
+
+    console.log("[v0] AdminDashboard - Users:", { count: usersData?.length, error: usersError })
+
+    const { data: studentsData, error: studentsError } = await supabase
       .from("students")
       .select("*, tutor:users!students_tutor_id_fkey(full_name)")
       .order("created_at", { ascending: false })
+
+    console.log("[v0] AdminDashboard - Students:", { count: studentsData?.length, error: studentsError })
 
     const startOfMonth = new Date()
     startOfMonth.setDate(1)
@@ -61,6 +70,12 @@ export function AdminDashboard() {
       completed_lessons: lessonsData?.length || 0,
     })
     setLoading(false)
+
+    console.log("[v0] AdminDashboard - Данные загружены:", {
+      usersCount: usersData?.length,
+      studentsCount: studentsData?.length,
+      monthlyStats,
+    })
   }
 
   const tutors = users.filter((u) => u.role === "tutor" || u.role === "admin")

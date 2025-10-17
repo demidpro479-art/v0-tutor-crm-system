@@ -1,6 +1,6 @@
 "use server"
 
-import { createSupabaseClient } from "@supabase/supabase-js"
+import { createClient } from "@supabase/supabase-js"
 
 interface CreateUserParams {
   email: string
@@ -12,16 +12,12 @@ interface CreateUserParams {
 
 export async function createUser(params: CreateUserParams) {
   try {
-    const supabaseAdmin = createSupabaseClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      {
-        auth: {
-          autoRefreshToken: false,
-          persistSession: false,
-        },
+    const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false,
       },
-    )
+    })
 
     // Генерируем случайный пароль (12 символов)
     const password = Math.random().toString(36).slice(-6) + Math.random().toString(36).slice(-6).toUpperCase()

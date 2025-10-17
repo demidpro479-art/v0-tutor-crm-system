@@ -78,6 +78,8 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
       const dateTimeString = `${formData.date}T${formData.time}:00`
       const scheduledAt = new Date(dateTimeString)
 
+      console.log("[v0] Обновление урока:", { id: lesson.id, formData })
+
       const { error } = await supabase
         .from("lessons")
         .update({
@@ -94,7 +96,12 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
         })
         .eq("id", lesson.id)
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Ошибка обновления урока:", error)
+        throw error
+      }
+
+      console.log("[v0] Урок успешно обновлен")
 
       toast({
         title: "Успешно",
@@ -103,11 +110,11 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
 
       onLessonUpdated()
       onOpenChange(false)
-    } catch (error) {
-      console.error("Ошибка обновления урока:", error)
+    } catch (error: any) {
+      console.error("[v0] Ошибка обновления урока:", error)
       toast({
         title: "Ошибка",
-        description: "Не удалось обновить урок",
+        description: error.message || "Не удалось обновить урок",
         variant: "destructive",
       })
     } finally {
@@ -121,9 +128,16 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
     try {
       const supabase = createClient()
 
+      console.log("[v0] Завершение урока:", lesson.id)
+
       const { error } = await supabase.from("lessons").update({ status: "completed" }).eq("id", lesson.id)
 
-      if (error) throw error
+      if (error) {
+        console.error("[v0] Ошибка завершения урока:", error)
+        throw error
+      }
+
+      console.log("[v0] Урок успешно завершен")
 
       toast({
         title: "Успешно",
@@ -131,11 +145,11 @@ export function LessonDetailsDialog({ lesson, open, onOpenChange, onLessonUpdate
       })
 
       onLessonUpdated()
-    } catch (error) {
-      console.error("Ошибка завершения урока:", error)
+    } catch (error: any) {
+      console.error("[v0] Ошибка завершения урока:", error)
       toast({
         title: "Ошибка",
-        description: "Не удалось завершить урок",
+        description: error.message || "Не удалось завершить урок",
         variant: "destructive",
       })
     } finally {

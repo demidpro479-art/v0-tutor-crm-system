@@ -15,9 +15,12 @@ DROP POLICY IF EXISTS "Admins can delete users" ON users;
 DROP POLICY IF EXISTS "Enable read access for authenticated users" ON users;
 DROP POLICY IF EXISTS "Enable insert for authenticated users" ON users;
 DROP POLICY IF EXISTS "Enable update for users based on id" ON users;
+DROP POLICY IF EXISTS "users_select_policy" ON users;
+DROP POLICY IF EXISTS "users_update_policy" ON users;
+DROP POLICY IF EXISTS "users_insert_policy" ON users;
 
 -- 3. СОЗДАЕМ НОВЫЕ ПРОСТЫЕ ПОЛИТИКИ ДЛЯ USERS
--- Политика для чтения: пользователи могут читать свой профиль и админы могут читать все
+-- Исправлено приведение типов UUID к TEXT
 CREATE POLICY "users_select_policy" ON users
 FOR SELECT
 USING (
@@ -30,7 +33,6 @@ USING (
   )
 );
 
--- Политика для обновления: пользователи могут обновлять свой профиль и админы могут обновлять все
 CREATE POLICY "users_update_policy" ON users
 FOR UPDATE
 USING (
@@ -43,7 +45,6 @@ USING (
   )
 );
 
--- Политика для вставки: только админы могут создавать пользователей
 CREATE POLICY "users_insert_policy" ON users
 FOR INSERT
 WITH CHECK (
@@ -63,9 +64,12 @@ DROP POLICY IF EXISTS "Admins can manage all lessons" ON lessons;
 DROP POLICY IF EXISTS "Enable read access for authenticated users" ON lessons;
 DROP POLICY IF EXISTS "Enable insert for authenticated users" ON lessons;
 DROP POLICY IF EXISTS "Enable update for users based on tutor_id" ON lessons;
+DROP POLICY IF EXISTS "lessons_select_policy" ON lessons;
+DROP POLICY IF EXISTS "lessons_insert_policy" ON lessons;
+DROP POLICY IF EXISTS "lessons_update_policy" ON lessons;
 
 -- 5. СОЗДАЕМ НОВЫЕ ПРОСТЫЕ ПОЛИТИКИ ДЛЯ LESSONS БЕЗ РЕКУРСИИ
--- Политика для чтения: репетиторы видят свои уроки, админы видят все
+-- Исправлено приведение типов UUID к TEXT для tutor_id
 CREATE POLICY "lessons_select_policy" ON lessons
 FOR SELECT
 USING (
@@ -78,7 +82,6 @@ USING (
   )
 );
 
--- Политика для вставки: репетиторы и админы могут создавать уроки
 CREATE POLICY "lessons_insert_policy" ON lessons
 FOR INSERT
 WITH CHECK (
@@ -91,7 +94,6 @@ WITH CHECK (
   )
 );
 
--- Политика для обновления: репетиторы могут обновлять свои уроки, админы могут обновлять все
 CREATE POLICY "lessons_update_policy" ON lessons
 FOR UPDATE
 USING (
@@ -113,9 +115,12 @@ DROP POLICY IF EXISTS "Admins can manage all students" ON students;
 DROP POLICY IF EXISTS "Enable read access for authenticated users" ON students;
 DROP POLICY IF EXISTS "Enable insert for authenticated users" ON students;
 DROP POLICY IF EXISTS "Enable update for users based on tutor_id" ON students;
+DROP POLICY IF EXISTS "students_select_policy" ON students;
+DROP POLICY IF EXISTS "students_insert_policy" ON students;
+DROP POLICY IF EXISTS "students_update_policy" ON students;
 
 -- 7. СОЗДАЕМ НОВЫЕ ПРОСТЫЕ ПОЛИТИКИ ДЛЯ STUDENTS
--- Политика для чтения: репетиторы видят своих учеников, админы видят всех
+-- Исправлено приведение типов UUID к TEXT для tutor_id
 CREATE POLICY "students_select_policy" ON students
 FOR SELECT
 USING (
@@ -128,7 +133,6 @@ USING (
   )
 );
 
--- Политика для вставки: репетиторы и админы могут создавать учеников
 CREATE POLICY "students_insert_policy" ON students
 FOR INSERT
 WITH CHECK (
@@ -141,7 +145,6 @@ WITH CHECK (
   )
 );
 
--- Политика для обновления: репетиторы могут обновлять своих учеников, админы могут обновлять всех
 CREATE POLICY "students_update_policy" ON students
 FOR UPDATE
 USING (

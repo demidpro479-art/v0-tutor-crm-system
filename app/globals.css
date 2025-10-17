@@ -1,8 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
-@custom-variant dark (&:is(.dark *));
-
 /* Голубая технологичная цветовая схема */
 :root {
   --background: 252 252 253;

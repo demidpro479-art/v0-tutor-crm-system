@@ -1,6 +1,6 @@
 "use server"
 
-import { createClient } from "@/lib/supabase/server"
+import { createSupabaseClient } from "@supabase/supabase-js"
 
 interface CreateUserParams {
   email: string
@@ -12,38 +12,27 @@ interface CreateUserParams {
 
 export async function createUser(params: CreateUserParams) {
   try {
-    const supabase = await createClient()
+    const supabaseAdmin = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+      },
+    )
 
-    // Проверяем что текущий пользователь - админ
-    const {
-      data: { user: currentUser },
-    } = await supabase.auth.getUser()
-
-    if (!currentUser) {
-      return { success: false, error: "Не авторизован" }
-    }
-
-    // Проверяем роль текущего пользователя
-    const { data: userRoles } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", currentUser.id)
-      .in("role", ["admin", "super_admin"])
-
-    if (!userRoles || userRoles.length === 0) {
-      return { success: false, error: "Недостаточно прав" }
-    }
-
-    // Генерируем случайный пароль (8 символов)
-    const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase()
+    // Генерируем случайный пароль (12 символов)
+    const password = Math.random().toString(36).slice(-6) + Math.random().toString(36).slice(-6).toUpperCase()
 
     console.log("[v0] Создание пользователя:", { email: params.email, password })
 
     // Создаем пользователя в Supabase Auth через Admin API
-    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    const { data: authData, error: authError } = await supabaseAdmin.auth.admin.createUser({
       email: params.email,
       password: password,
-      email_confirm: true, // Автоматически подтверждаем email
+      email_confirm: true,
     })
 
     if (authError) {
@@ -58,7 +47,7 @@ export async function createUser(params: CreateUserParams) {
     console.log("[v0] Auth пользователь создан:", authData.user.id)
 
     // Создаем запись в таблице users
-    const { data: userData, error: userError } = await supabase
+    const { data: userData, error: userError } = await supabaseAdmin
       .from("users")
       .insert({
         id: authData.user.id,
@@ -73,14 +62,14 @@ export async function createUser(params: CreateUserParams) {
     if (userError) {
       console.error("[v0] Ошибка создания записи в users:", userError)
       // Удаляем auth пользователя если не удалось создать запись в users
-      await supabase.auth.admin.deleteUser(authData.user.id)
+      await supabaseAdmin.auth.admin.deleteUser(authData.user.id)
       return { success: false, error: userError.message }
     }
 
     console.log("[v0] Запись в users создана:", userData.id)
 
     // Добавляем роль в user_roles
-    const { error: roleError } = await supabase.from("user_roles").insert({
+    const { error: roleError } = await supabaseAdmin.from("user_roles").insert({
       user_id: authData.user.id,
       role: params.role,
     })
@@ -90,7 +79,7 @@ export async function createUser(params: CreateUserParams) {
     }
 
     // Устанавливаем активную роль
-    const { error: activeRoleError } = await supabase.from("user_active_role").insert({
+    const { error: activeRoleError } = await supabaseAdmin.from("user_active_role").insert({
       user_id: authData.user.id,
       active_role: params.role,
     })
@@ -101,7 +90,7 @@ export async function createUser(params: CreateUserParams) {
 
     // Если это репетитор, создаем настройки
     if (params.role === "tutor") {
-      const { error: settingsError } = await supabase.from("tutor_settings").insert({
+      const { error: settingsError } = await supabaseAdmin.from("tutor_settings").insert({
         user_id: authData.user.id,
         rate_per_lesson: params.rate_per_lesson || 0,
         lesson_price: params.lesson_price || 0,

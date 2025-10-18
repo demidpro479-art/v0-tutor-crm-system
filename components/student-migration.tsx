@@ -21,8 +21,24 @@ export function StudentMigration({ students, tutors, onMigrationComplete }: Stud
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
+  console.log("[v0] StudentMigration - Received data:", {
+    totalStudents: students.length,
+    students: students,
+    tutors: tutors,
+    studentsWithNullTutor: students.filter((s) => s.tutor_id === null).length,
+    studentsWithUndefinedTutor: students.filter((s) => s.tutor_id === undefined).length,
+    studentsWithEmptyTutor: students.filter((s) => !s.tutor_id).length,
+  })
+
   const studentsWithoutTutor = students.filter((s) => !s.tutor_id || s.tutor_id === null)
   const studentsWithTutor = students.filter((s) => s.tutor_id && s.tutor_id !== null)
+
+  console.log("[v0] StudentMigration - Filtered students:", {
+    withoutTutor: studentsWithoutTutor.length,
+    withTutor: studentsWithTutor.length,
+    studentsWithoutTutor: studentsWithoutTutor,
+    studentsWithTutor: studentsWithTutor,
+  })
 
   const toggleStudent = (studentId: string) => {
     setSelectedStudents((prev) =>
@@ -44,6 +60,11 @@ export function StudentMigration({ students, tutors, onMigrationComplete }: Stud
     const supabase = createClient()
 
     try {
+      console.log("[v0] StudentMigration - Migrating students:", {
+        selectedStudents,
+        targetTutor,
+      })
+
       const { error } = await supabase.from("students").update({ tutor_id: targetTutor }).in("id", selectedStudents)
 
       if (error) throw error
@@ -88,6 +109,7 @@ export function StudentMigration({ students, tutors, onMigrationComplete }: Stud
           <div className="text-center py-8 text-orange-700">
             <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-orange-500" />
             <p>Все ученики имеют назначенного репетитора</p>
+            <p className="text-xs mt-2">Проверьте консоль для debug информации</p>
           </div>
         ) : (
           <div className="grid gap-2 max-h-64 overflow-y-auto">

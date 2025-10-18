@@ -30,6 +30,13 @@ interface StudentsTableProps {
 }
 
 export function StudentsTable({ students, tutors }: StudentsTableProps) {
+  console.log("[v0] StudentsTable - Received students:", {
+    total: students.length,
+    withTutor: students.filter((s) => s.tutor_id).length,
+    withoutTutor: students.filter((s) => !s.tutor_id).length,
+    students: students,
+  })
+
   // Группируем учеников по репетиторам
   const tutorsWithStudents = tutors.map((tutor) => ({
     ...tutor,
@@ -54,6 +61,7 @@ export function StudentsTable({ students, tutors }: StudentsTableProps) {
               <div className="text-center py-12 text-slate-500">
                 <User className="h-16 w-16 mx-auto mb-4 opacity-50" />
                 <p>Нет учеников в системе</p>
+                <p className="text-xs mt-2">Проверьте консоль для debug информации</p>
               </div>
             ) : (
               <div className="grid gap-3">

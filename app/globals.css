@@ -1,5 +1,6 @@
 @import "tailwindcss";
-@import "tw-animate-css";
+
+/* Удалил @import "tw-animate-css" который вызывал ошибку "Missing closing }" */
 
 /* Голубая технологичная цветовая схема */
 :root {

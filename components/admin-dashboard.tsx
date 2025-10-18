@@ -34,14 +34,27 @@ export function AdminDashboard() {
       .select("*")
       .order("created_at", { ascending: false })
 
-    console.log("[v0] AdminDashboard - Users:", { count: usersData?.length, error: usersError })
+    console.log("[v0] AdminDashboard - Users:", {
+      count: usersData?.length,
+      error: usersError,
+      data: usersData,
+    })
 
     const { data: studentsData, error: studentsError } = await supabase
       .from("students")
-      .select("*, tutor:users!students_tutor_id_fkey(full_name)")
+      .select(`
+        *,
+        tutor:users!students_tutor_id_fkey(full_name)
+      `)
       .order("created_at", { ascending: false })
 
-    console.log("[v0] AdminDashboard - Students:", { count: studentsData?.length, error: studentsError })
+    console.log("[v0] AdminDashboard - Students:", {
+      count: studentsData?.length,
+      error: studentsError,
+      data: studentsData,
+      studentsWithNullTutor: studentsData?.filter((s) => s.tutor_id === null).length,
+      studentsWithTutor: studentsData?.filter((s) => s.tutor_id !== null).length,
+    })
 
     const startOfMonth = new Date()
     startOfMonth.setDate(1)

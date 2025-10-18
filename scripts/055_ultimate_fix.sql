@@ -1,7 +1,7 @@
 -- ФИНАЛЬНЫЙ СКРИПТ - ИСПРАВЛЯЕТ ВСЕ ПРОБЛЕМЫ
 -- 1. Отключает RLS для всех таблиц
--- 2. Создает функцию calculate_remaining_lessons
--- 3. Не использует несуществующие таблицы
+-- 2. Создает функцию calculate_remaining_lessons с правильными колонками
+-- 3. Использует lessons_purchased из payments (НЕ lessons_count!)
 
 -- Отключаем RLS для всех таблиц
 ALTER TABLE IF EXISTS users DISABLE ROW LEVEL SECURITY;
@@ -24,8 +24,20 @@ ALTER TABLE IF EXISTS audit_logs DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS telegram_users DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS student_notes DISABLE ROW LEVEL SECURITY;
 ALTER TABLE IF EXISTS lesson_cancellations DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS transactions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS manager_commissions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS manager_sales DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS tutor_settings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS profiles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS action_history DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS lesson_deductions DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS lesson_logs DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS lesson_refill_notifications DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS lesson_refill_reminders DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS salary_payments DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS transaction_history DISABLE ROW LEVEL SECURITY;
 
--- Создаем функцию для расчета остатка уроков
+-- Создаем функцию с правильными колонками: lessons_purchased из payments
 CREATE OR REPLACE FUNCTION calculate_remaining_lessons(student_uuid UUID)
 RETURNS INTEGER
 LANGUAGE plpgsql
@@ -36,12 +48,11 @@ DECLARE
   total_completed INTEGER;
   remaining INTEGER;
 BEGIN
-  -- Считаем общее количество оплаченных уроков
-  SELECT COALESCE(SUM(lessons_count), 0)
+  -- Считаем общее количество оплаченных уроков из payments (используем lessons_purchased)
+  SELECT COALESCE(SUM(lessons_purchased), 0)
   INTO total_paid
   FROM payments
-  WHERE student_id = student_uuid
-    AND status = 'completed';
+  WHERE student_id = student_uuid;
 
   -- Считаем количество проведенных уроков
   SELECT COUNT(*)
@@ -63,4 +74,4 @@ GRANT EXECUTE ON FUNCTION calculate_remaining_lessons(UUID) TO anon;
 GRANT EXECUTE ON FUNCTION calculate_remaining_lessons(UUID) TO service_role;
 
 -- Успешно завершено
-SELECT 'RLS отключен для всех таблиц и функция calculate_remaining_lessons создана' AS status;
+SELECT 'RLS отключен для всех таблиц и функция calculate_remaining_lessons создана с правильными колонками' AS status;

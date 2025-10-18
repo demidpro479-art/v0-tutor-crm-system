@@ -1,9 +1,18 @@
 -- ПОЛНОЕ ИСПРАВЛЕНИЕ ВСЕХ RLS ПОЛИТИК
 -- Этот скрипт полностью пересоздает RLS политики для всех таблиц
+-- Исправления: 
+-- 1. Удалены ненужные касты ::text, поскольку auth.uid() возвращает UUID, и поля ID (user_id, tutor_id и т.д.) предполагаются UUID.
+--    Это исправляет ошибки "operator does not exist: uuid = text" и "column "user_id" is of type uuid but expression is of type text".
+-- 2. Добавлены IF EXISTS для ALTER TABLE DISABLE ROW LEVEL SECURITY, чтобы избежать ошибок "relation does not exist" (например, для manager_earnings).
+-- 3. Ошибка "column lessons count is not exists" не найдена в этом скрипте — вероятно, она в другом файле (например, в VIEW или SELECT с опечаткой "lessons count" вместо "lessons_count"). 
+--    Если это в отчете/аналитике, используйте AS lessons_count в SELECT COUNT(*) AS lessons_count.
+-- 4. Убедитесь, что все таблицы созданы перед выполнением (в более ранних миграциях). Если таблицы нет, ALTER с IF EXISTS пропустит.
+-- 5. В DO блоке удалены ::text для INSERT, чтобы вставлять UUID напрямую.
+-- 6. Включите RLS на таблицах, если оно отключено: ALTER TABLE table_name ENABLE ROW LEVEL SECURITY; (добавьте в начало, если нужно).
 
 -- 1. ОТКЛЮЧАЕМ RLS для таблиц с ролями (они не содержат чувствительных данных)
-ALTER TABLE user_roles DISABLE ROW LEVEL SECURITY;
-ALTER TABLE user_active_role DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS user_roles DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS user_active_role DISABLE ROW LEVEL SECURITY;
 
 -- 2. УДАЛЯЕМ ВСЕ СУЩЕСТВУЮЩИЕ ПОЛИТИКИ ДЛЯ USERS
 DROP POLICY IF EXISTS "Users can view own profile" ON users;
@@ -20,7 +29,7 @@ DROP POLICY IF EXISTS "users_update_policy" ON users;
 DROP POLICY IF EXISTS "users_insert_policy" ON users;
 
 -- 3. СОЗДАЕМ НОВЫЕ ПРОСТЫЕ ПОЛИТИКИ ДЛЯ USERS
--- Исправлено приведение типов UUID к TEXT
+-- Без каста ::text, предполагая auth_user_id UUID
 CREATE POLICY "users_select_policy" ON users
 FOR SELECT
 USING (
@@ -28,7 +37,7 @@ USING (
   OR 
   EXISTS (
     SELECT 1 FROM user_roles 
-    WHERE user_roles.user_id = auth.uid()::text 
+    WHERE user_roles.user_id = auth.uid()
     AND user_roles.role IN ('admin', 'super_admin')
   )
 );
@@ -40,7 +49,7 @@ USING (
   OR 
   EXISTS (
     SELECT 1 FROM user_roles 
-    WHERE user_roles.user_id = auth.uid()::text 
+    WHERE user_roles.user_id = auth.uid()
     AND user_roles.role IN ('admin', 'super_admin')
   )
 );
@@ -50,7 +59,7 @@ FOR INSERT
 WITH CHECK (
   EXISTS (
     SELECT 1 FROM user_roles 
-    WHERE user_roles.user_id = auth.uid()::text 
+    WHERE user_roles.user_id = auth.uid()
     AND user_roles.role IN ('admin', 'super_admin')
   )
 );
@@ -69,15 +78,15 @@ DROP POLICY IF EXISTS "lessons_insert_policy" ON lessons;
 DROP POLICY IF EXISTS "lessons_update_policy" ON lessons;
 
 -- 5. СОЗДАЕМ НОВЫЕ ПРОСТЫЕ ПОЛИТИКИ ДЛЯ LESSONS БЕЗ РЕКУРСИИ
--- Исправлено приведение типов UUID к TEXT для tutor_id
+-- Без каста ::text для tutor_id (предполагая tutor_id UUID)
 CREATE POLICY "lessons_select_policy" ON lessons
 FOR SELECT
 USING (
-  tutor_id = auth.uid()::text
+  tutor_id = auth.uid()
   OR
   EXISTS (
     SELECT 1 FROM user_roles 
-    WHERE user_roles.user_id = auth.uid()::text 
+    WHERE user_roles.user_id = auth.uid()
     AND user_roles.role IN ('admin', 'super_admin', 'manager')
   )
 );
@@ -85,11 +94,11 @@ USING (
 CREATE POLICY "lessons_insert_policy" ON lessons
 FOR INSERT
 WITH CHECK (
-  tutor_id = auth.uid()::text
+  tutor_id = auth.uid()
   OR
   EXISTS (
     SELECT 1 FROM user_roles 
-    WHERE user_roles.user_id = auth.uid()::text 
+    WHERE user_roles.user_id = auth.uid()
     AND user_roles.role IN ('admin', 'super_admin', 'manager')
   )
 );
@@ -97,11 +106,11 @@ WITH CHECK (
 CREATE POLICY "lessons_update_policy" ON lessons
 FOR UPDATE
 USING (
-  tutor_id = auth.uid()::text
+  tutor_id = auth.uid()
   OR
   EXISTS (
     SELECT 1 FROM user_roles 
-    WHERE user_roles.user_id = auth.uid()::text 
+    WHERE user_roles.user_id = auth.uid()
     AND user_roles.role IN ('admin', 'super_admin', 'manager')
   )
 );
@@ -120,15 +129,15 @@ DROP POLICY IF EXISTS "students_insert_policy" ON students;
 DROP POLICY IF EXISTS "students_update_policy" ON students;
 
 -- 7. СОЗДАЕМ НОВЫЕ ПРОСТЫЕ ПОЛИТИКИ ДЛЯ STUDENTS
--- Исправлено приведение типов UUID к TEXT для tutor_id
+-- Без каста ::text для tutor_id (предполагая tutor_id UUID)
 CREATE POLICY "students_select_policy" ON students
 FOR SELECT
 USING (
-  tutor_id = auth.uid()::text
+  tutor_id = auth.uid()
   OR
   EXISTS (
     SELECT 1 FROM user_roles 
-    WHERE user_roles.user_id = auth.uid()::text 
+    WHERE user_roles.user_id = auth.uid()
     AND user_roles.role IN ('admin', 'super_admin', 'manager')
   )
 );
@@ -136,11 +145,11 @@ USING (
 CREATE POLICY "students_insert_policy" ON students
 FOR INSERT
 WITH CHECK (
-  tutor_id = auth.uid()::text
+  tutor_id = auth.uid()
   OR
   EXISTS (
     SELECT 1 FROM user_roles 
-    WHERE user_roles.user_id = auth.uid()::text 
+    WHERE user_roles.user_id = auth.uid()
     AND user_roles.role IN ('admin', 'super_admin', 'manager')
   )
 );
@@ -148,19 +157,19 @@ WITH CHECK (
 CREATE POLICY "students_update_policy" ON students
 FOR UPDATE
 USING (
-  tutor_id = auth.uid()::text
+  tutor_id = auth.uid()
   OR
   EXISTS (
     SELECT 1 FROM user_roles 
-    WHERE user_roles.user_id = auth.uid()::text 
+    WHERE user_roles.user_id = auth.uid()
     AND user_roles.role IN ('admin', 'super_admin', 'manager')
   )
 );
 
 -- 8. ОТКЛЮЧАЕМ RLS ДЛЯ ОСТАЛЬНЫХ ТАБЛИЦ (они не содержат чувствительных данных)
-ALTER TABLE tutor_settings DISABLE ROW LEVEL SECURITY;
-ALTER TABLE tutor_earnings DISABLE ROW LEVEL SECURITY;
-ALTER TABLE manager_earnings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS tutor_settings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS tutor_earnings DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS manager_earnings DISABLE ROW LEVEL SECURITY;
 
 -- 9. ДОБАВЛЯЕМ РОЛЬ ADMIN ДЛЯ ПОЛЬЗОВАТЕЛЯ dimid0403@gmail.com
 DO $$
@@ -174,14 +183,14 @@ BEGIN
   LIMIT 1;
 
   IF v_user_id IS NOT NULL THEN
-    -- Добавляем роль admin в user_roles
+    -- Добавляем роль admin в user_roles (без ::text, вставляем UUID)
     INSERT INTO user_roles (user_id, role)
-    VALUES (v_user_id::text, 'admin')
+    VALUES (v_user_id, 'admin')
     ON CONFLICT (user_id, role) DO NOTHING;
 
-    -- Устанавливаем активную роль
+    -- Устанавливаем активную роль (без ::text)
     INSERT INTO user_active_role (user_id, active_role)
-    VALUES (v_user_id::text, 'admin')
+    VALUES (v_user_id, 'admin')
     ON CONFLICT (user_id) DO UPDATE SET active_role = 'admin';
 
     RAISE NOTICE 'Роль admin добавлена для пользователя dimid0403@gmail.com';

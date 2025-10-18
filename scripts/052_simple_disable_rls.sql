@@ -1,58 +1,56 @@
--- Простое отключение RLS для всех проблемных таблиц
--- Это временное решение чтобы все заработало
+CREATE TABLE IF NOT EXISTS users (
+  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+  email VARCHAR(255) UNIQUE NOT NULL,
+  password VARCHAR(255) NOT NULL,
+  name VARCHAR(255),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- Отключаем RLS для основных таблиц
-ALTER TABLE users DISABLE ROW LEVEL SECURITY;
-ALTER TABLE students DISABLE ROW LEVEL SECURITY;
-ALTER TABLE lessons DISABLE ROW LEVEL SECURITY;
-ALTER TABLE payments DISABLE ROW LEVEL SECURITY;
-ALTER TABLE recurring_schedules DISABLE ROW LEVEL SECURITY;
-ALTER TABLE user_roles DISABLE ROW LEVEL SECURITY;
-ALTER TABLE user_active_role DISABLE ROW LEVEL SECURITY;
+CREATE TABLE IF NOT EXISTS students (
+  id SERIAL PRIMARY KEY,
+  user_id UUID REFERENCES users(id),
+  tutor_id UUID REFERENCES users(id),
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
--- Удаляем все существующие политики
-DROP POLICY IF EXISTS "users_select_policy" ON users;
-DROP POLICY IF EXISTS "users_insert_policy" ON users;
-DROP POLICY IF EXISTS "users_update_policy" ON users;
-DROP POLICY IF EXISTS "students_select_policy" ON students;
-DROP POLICY IF EXISTS "students_insert_policy" ON students;
-DROP POLICY IF EXISTS "students_update_policy" ON students;
-DROP POLICY IF EXISTS "students_delete_policy" ON students;
-DROP POLICY IF EXISTS "lessons_select_policy" ON lessons;
-DROP POLICY IF EXISTS "lessons_insert_policy" ON lessons;
-DROP POLICY IF EXISTS "lessons_update_policy" ON lessons;
-DROP POLICY IF EXISTS "lessons_delete_policy" ON lessons;
-DROP POLICY IF EXISTS "payments_select_policy" ON payments;
-DROP POLICY IF EXISTS "payments_insert_policy" ON payments;
-DROP POLICY IF EXISTS "recurring_schedules_select_policy" ON recurring_schedules;
-DROP POLICY IF EXISTS "recurring_schedules_insert_policy" ON recurring_schedules;
-DROP POLICY IF EXISTS "recurring_schedules_update_policy" ON recurring_schedules;
-DROP POLICY IF EXISTS "recurring_schedules_delete_policy" ON recurring_schedules;
+CREATE TABLE IF NOT EXISTS lessons (
+  id SERIAL PRIMARY KEY,
+  tutor_id UUID REFERENCES users(id),
+  student_id UUID REFERENCES users(id),
+  date DATE NOT NULL,
+  time TIME NOT NULL,
+  duration INTEGER NOT NULL,
+  status ENUM('planned', 'completed', 'canceled') DEFAULT 'planned',
+  comment TEXT
+);
 
--- Добавляем роль admin для dimid0403@gmail.com если её нет
-DO $$
-DECLARE
-  v_user_id TEXT;
-BEGIN
-  -- Находим пользователя по email
-  SELECT id INTO v_user_id
-  FROM users
-  WHERE email = 'dimid0403@gmail.com'
-  LIMIT 1;
+CREATE TABLE IF NOT EXISTS payments (
+  id SERIAL PRIMARY KEY,
+  student_id UUID REFERENCES users(id),
+  amount DECIMAL(10,2) NOT NULL,
+  date DATE NOT NULL,
+  check_url VARCHAR(255),
+  comment TEXT
+);
 
-  IF v_user_id IS NOT NULL THEN
-    -- Добавляем роль admin если её нет
-    INSERT INTO user_roles (user_id, role)
-    VALUES (v_user_id, 'admin')
-    ON CONFLICT (user_id, role) DO NOTHING;
+CREATE TABLE IF NOT EXISTS recurring_schedules (
+  id SERIAL PRIMARY KEY,
+  tutor_id UUID REFERENCES users(id),
+  student_id UUID REFERENCES users(id),
+  day_of_week INTEGER NOT NULL, -- 0-6 (воскресенье-суббота)
+  time TIME NOT NULL,
+  duration INTEGER NOT NULL,
+  start_date DATE NOT NULL,
+  end_date DATE
+);
 
-    -- Устанавливаем активную роль
-    INSERT INTO user_active_role (user_id, active_role)
-    VALUES (v_user_id, 'admin')
-    ON CONFLICT (user_id) DO UPDATE SET active_role = 'admin';
+CREATE TABLE IF NOT EXISTS user_roles (
+  user_id UUID REFERENCES users(id),
+  role VARCHAR(50) NOT NULL,
+  PRIMARY KEY (user_id, role)
+);
 
-    RAISE NOTICE 'Роль admin добавлена для пользователя %', v_user_id;
-  ELSE
-    RAISE NOTICE 'Пользователь dimid0403@gmail.com не найден';
-  END IF;
-END $$;
+CREATE TABLE IF NOT EXISTS user_active_role (
+  user_id UUID PRIMARY KEY REFERENCES users(id),
+  active_role VARCHAR(50) NOT NULL
+);

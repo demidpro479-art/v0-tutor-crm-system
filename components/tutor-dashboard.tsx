@@ -32,12 +32,20 @@ export function TutorDashboard({ userId }: TutorDashboardProps) {
     try {
       const supabase = createBrowserClient()
 
+      console.log("[v0] TutorDashboard - Загрузка учеников из profiles для репетитора:", userId)
+
       const { data: students, error: studentsError } = await supabase
-        .from("students")
-        .select("id")
+        .from("profiles")
+        .select("id, user_id")
+        .eq("role", "student")
         .eq("tutor_id", userId)
         .not("tutor_id", "is", null)
-        .eq("is_active", true)
+
+      console.log("[v0] TutorDashboard - Students из profiles:", {
+        count: students?.length,
+        error: studentsError,
+        data: students,
+      })
 
       if (studentsError) {
         console.error("[v0] Error loading students:", studentsError)
@@ -45,9 +53,11 @@ export function TutorDashboard({ userId }: TutorDashboardProps) {
         return
       }
 
-      const studentIds = students?.map((s) => s.id) || []
+      const studentUserIds = students?.map((s) => s.user_id) || []
 
-      if (studentIds.length === 0) {
+      console.log("[v0] TutorDashboard - Student user_ids:", studentUserIds)
+
+      if (studentUserIds.length === 0) {
         setStats({
           totalStudents: 0,
           completedLessons: 0,
@@ -58,26 +68,16 @@ export function TutorDashboard({ userId }: TutorDashboardProps) {
         return
       }
 
-      const { count: completedCount, error: completedError } = await supabase
-        .from("lessons")
-        .select("*", { count: "exact", head: true })
-        .in("student_id", studentIds)
-        .eq("status", "completed")
+      const { data: lessonsData } = await supabase.from("lessons").select("*").in("student_id", studentUserIds)
 
-      if (completedError) {
-        console.error("[v0] Error loading completed lessons:", completedError)
-      }
+      console.log("[v0] TutorDashboard - Lessons:", {
+        count: lessonsData?.length,
+        data: lessonsData,
+      })
 
-      const { count: upcomingCount, error: upcomingError } = await supabase
-        .from("lessons")
-        .select("*", { count: "exact", head: true })
-        .in("student_id", studentIds)
-        .eq("status", "scheduled")
-        .gte("scheduled_at", new Date().toISOString())
-
-      if (upcomingError) {
-        console.error("[v0] Error loading upcoming lessons:", upcomingError)
-      }
+      const completedCount = lessonsData?.filter((l) => l.status === "completed").length || 0
+      const upcomingCount =
+        lessonsData?.filter((l) => l.status === "scheduled" && new Date(l.scheduled_at) >= new Date()).length || 0
 
       const { data: earnings, error: earningsError } = await supabase
         .from("tutor_earnings")
@@ -92,9 +92,16 @@ export function TutorDashboard({ userId }: TutorDashboardProps) {
 
       setStats({
         totalStudents: students?.length || 0,
-        completedLessons: completedCount || 0,
+        completedLessons: completedCount,
         earnings: totalEarnings,
-        upcomingLessons: upcomingCount || 0,
+        upcomingLessons: upcomingCount,
+      })
+
+      console.log("[v0] TutorDashboard - Stats:", {
+        totalStudents: students?.length,
+        completedLessons: completedCount,
+        upcomingLessons: upcomingCount,
+        earnings: totalEarnings,
       })
     } catch (error) {
       console.error("[v0] Error in loadStats:", error)

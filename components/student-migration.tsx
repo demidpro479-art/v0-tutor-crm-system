@@ -23,21 +23,21 @@ export function StudentMigration({ students, tutors, onMigrationComplete }: Stud
 
   console.log("[v0] StudentMigration - Received data:", {
     totalStudents: students.length,
-    students: students,
-    tutors: tutors,
+    sampleStudent: students[0],
+    tutors: tutors.length,
     studentsWithNullTutor: students.filter((s) => s.tutor_id === null).length,
     studentsWithUndefinedTutor: students.filter((s) => s.tutor_id === undefined).length,
     studentsWithEmptyTutor: students.filter((s) => !s.tutor_id).length,
   })
 
-  const studentsWithoutTutor = students.filter((s) => !s.tutor_id || s.tutor_id === null)
-  const studentsWithTutor = students.filter((s) => s.tutor_id && s.tutor_id !== null)
+  const studentsWithoutTutor = students.filter((s) => s.tutor_id === null || s.tutor_id === undefined)
+  const studentsWithTutor = students.filter((s) => s.tutor_id !== null && s.tutor_id !== undefined)
 
   console.log("[v0] StudentMigration - Filtered students:", {
     withoutTutor: studentsWithoutTutor.length,
     withTutor: studentsWithTutor.length,
-    studentsWithoutTutor: studentsWithoutTutor,
-    studentsWithTutor: studentsWithTutor,
+    sampleWithoutTutor: studentsWithoutTutor[0],
+    sampleWithTutor: studentsWithTutor[0],
   })
 
   const toggleStudent = (studentId: string) => {
@@ -109,7 +109,9 @@ export function StudentMigration({ students, tutors, onMigrationComplete }: Stud
           <div className="text-center py-8 text-orange-700">
             <CheckCircle2 className="h-12 w-12 mx-auto mb-2 text-orange-500" />
             <p>Все ученики имеют назначенного репетитора</p>
-            <p className="text-xs mt-2">Проверьте консоль для debug информации</p>
+            <p className="text-xs mt-2 text-orange-600 font-medium">
+              Откройте консоль браузера (F12 → Console) для debug информации
+            </p>
           </div>
         ) : (
           <div className="grid gap-2 max-h-64 overflow-y-auto">
@@ -125,7 +127,7 @@ export function StudentMigration({ students, tutors, onMigrationComplete }: Stud
               >
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium text-slate-900">{student.name}</p>
+                    <p className="font-medium text-slate-900">{student.full_name}</p>
                     <p className="text-sm text-slate-600">{student.email}</p>
                   </div>
                   {selectedStudents.includes(student.id) && <CheckCircle2 className="h-5 w-5 text-blue-600" />}
@@ -147,29 +149,36 @@ export function StudentMigration({ students, tutors, onMigrationComplete }: Stud
           </div>
         </div>
 
-        <div className="grid gap-2 max-h-64 overflow-y-auto mb-4">
-          {studentsWithTutor.map((student) => (
-            <div
-              key={student.id}
-              onClick={() => toggleStudent(student.id)}
-              className={`p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
-                selectedStudents.includes(student.id)
-                  ? "border-blue-500 bg-blue-50"
-                  : "border-blue-200 bg-white hover:border-blue-300"
-              }`}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium text-slate-900">{student.name}</p>
-                  <p className="text-sm text-slate-600">
-                    Текущий репетитор: {student.tutor?.full_name || "Не назначен"}
-                  </p>
+        {studentsWithTutor.length === 0 ? (
+          <div className="text-center py-8 text-blue-700">
+            <Users className="h-12 w-12 mx-auto mb-2 text-blue-500" />
+            <p>Нет учеников с назначенным репетитором</p>
+          </div>
+        ) : (
+          <div className="grid gap-2 max-h-64 overflow-y-auto mb-4">
+            {studentsWithTutor.map((student) => (
+              <div
+                key={student.id}
+                onClick={() => toggleStudent(student.id)}
+                className={`p-3 rounded-lg border-2 cursor-pointer transition-all duration-200 ${
+                  selectedStudents.includes(student.id)
+                    ? "border-blue-500 bg-blue-50"
+                    : "border-blue-200 bg-white hover:border-blue-300"
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-slate-900">{student.full_name}</p>
+                    <p className="text-sm text-slate-600">
+                      Текущий репетитор: {student.tutor?.full_name || "Не назначен"}
+                    </p>
+                  </div>
+                  {selectedStudents.includes(student.id) && <CheckCircle2 className="h-5 w-5 text-blue-600" />}
                 </div>
-                {selectedStudents.includes(student.id) && <CheckCircle2 className="h-5 w-5 text-blue-600" />}
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       {selectedStudents.length > 0 && (
@@ -181,7 +190,7 @@ export function StudentMigration({ students, tutors, onMigrationComplete }: Stud
                 <SelectTrigger className="w-full bg-white">
                   <SelectValue placeholder="Выберите репетитора" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="bg-white">
                   {tutors.map((tutor) => (
                     <SelectItem key={tutor.id} value={tutor.id}>
                       {tutor.full_name || tutor.email}

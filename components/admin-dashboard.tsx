@@ -27,7 +27,7 @@ export function AdminDashboard() {
   async function loadData() {
     const supabase = createClient()
 
-    console.log("[v0] AdminDashboard - Загрузка данных")
+    console.log("[v0] AdminDashboard - Загрузка данных из profiles")
 
     const { data: usersData, error: usersError } = await supabase
       .from("users")
@@ -37,18 +37,18 @@ export function AdminDashboard() {
     console.log("[v0] AdminDashboard - Users:", {
       count: usersData?.length,
       error: usersError,
-      data: usersData,
     })
 
     const { data: studentsData, error: studentsError } = await supabase
-      .from("students")
+      .from("profiles")
       .select(`
         *,
-        tutor:users!students_tutor_id_fkey(full_name)
+        tutor:users!profiles_tutor_id_fkey(full_name)
       `)
+      .eq("role", "student")
       .order("created_at", { ascending: false })
 
-    console.log("[v0] AdminDashboard - Students:", {
+    console.log("[v0] AdminDashboard - Students из profiles:", {
       count: studentsData?.length,
       error: studentsError,
       data: studentsData,
@@ -87,7 +87,7 @@ export function AdminDashboard() {
     console.log("[v0] AdminDashboard - Данные загружены:", {
       usersCount: usersData?.length,
       studentsCount: studentsData?.length,
-      monthlyStats,
+      studentsWithNullTutor: studentsData?.filter((s) => s.tutor_id === null).length,
     })
   }
 

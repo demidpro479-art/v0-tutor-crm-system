@@ -118,6 +118,21 @@ export default async function DashboardPage() {
     )
   }
 
+  if (activeRole === "super_admin" || activeRole === "admin") {
+    const { data: studentsCheck, error: studentsError } = await supabase
+      .from("students")
+      .select("id, full_name, tutor_id")
+      .limit(10)
+
+    console.log("[v0] Dashboard SERVER - Students check:", {
+      count: studentsCheck?.length,
+      error: studentsError,
+      sample: studentsCheck?.slice(0, 3),
+      studentsWithNullTutor: studentsCheck?.filter((s) => s.tutor_id === null).length,
+      studentsWithTutor: studentsCheck?.filter((s) => s.tutor_id !== null).length,
+    })
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />

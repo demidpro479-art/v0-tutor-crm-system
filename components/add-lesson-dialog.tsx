@@ -161,7 +161,6 @@ export function AddLessonDialog({ open, onOpenChange, students, onLessonAdded }:
                 <Input
                   id="date"
                   type="date"
-                  min={today}
                   value={formData.date}
                   onChange={(e) => setFormData({ ...formData, date: e.target.value })}
                   required

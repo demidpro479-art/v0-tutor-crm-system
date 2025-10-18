@@ -29,9 +29,14 @@ interface Student {
   name: string
   remaining_lessons: number
   is_active: boolean
+  tutor_id: number
 }
 
-export function CalendarView() {
+interface CalendarViewProps {
+  tutorId?: string
+}
+
+export function CalendarView({ tutorId }: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
   const [lessons, setLessons] = useState<Lesson[]>([])
   const [students, setStudents] = useState<Student[]>([])
@@ -65,7 +70,7 @@ export function CalendarView() {
 
   useEffect(() => {
     fetchData()
-  }, [currentDate])
+  }, [currentDate, tutorId])
 
   async function fetchData() {
     const supabase = createClient()
@@ -77,15 +82,20 @@ export function CalendarView() {
 
       console.log("[v0] Загружаем уроки с", startOfMonth.toISOString(), "по", endOfMonth.toISOString())
 
-      const { data: lessonsData, error: lessonsError } = await supabase
+      let lessonsQuery = supabase
         .from("lessons")
         .select(`
           *,
-          students!inner(name)
+          students!inner(name, tutor_id)
         `)
         .gte("scheduled_at", startOfMonth.toISOString())
         .lte("scheduled_at", endOfMonth.toISOString())
-        .order("scheduled_at")
+
+      if (tutorId) {
+        lessonsQuery = lessonsQuery.eq("students.tutor_id", tutorId).neq("students.tutor_id", 0)
+      }
+
+      const { data: lessonsData, error: lessonsError } = await lessonsQuery.order("scheduled_at")
 
       if (lessonsError) throw lessonsError
 
@@ -98,11 +108,17 @@ export function CalendarView() {
       console.log("[v0] Загружено уроков:", formattedLessons.length)
       setLessons(formattedLessons)
 
-      const { data: studentsData, error: studentsError } = await supabase
+      let studentsQuery = supabase
         .from("students")
-        .select("id, name, remaining_lessons, is_active")
+        .select("id, name, remaining_lessons, is_active, tutor_id")
         .eq("is_active", true)
         .order("name")
+
+      if (tutorId) {
+        studentsQuery = studentsQuery.eq("tutor_id", tutorId).neq("tutor_id", 0)
+      }
+
+      const { data: studentsData, error: studentsError } = await studentsQuery
 
       if (studentsError) throw studentsError
       setStudents(studentsData || [])

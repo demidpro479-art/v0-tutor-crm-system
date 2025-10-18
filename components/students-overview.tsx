@@ -48,7 +48,7 @@ export function StudentsOverview({ tutorId }: StudentsOverviewProps) {
       let query = supabase.from("students").select("*").is("deleted_at", null).order("created_at", { ascending: false })
 
       if (tutorId) {
-        query = query.eq("tutor_id", tutorId)
+        query = query.eq("tutor_id", tutorId).neq("tutor_id", 0)
       }
 
       const { data, error } = await query

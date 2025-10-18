@@ -18,47 +18,73 @@ interface DetailedStats {
   completion_rate: number
 }
 
-export function StatisticsOverview() {
+interface StatisticsOverviewProps {
+  tutorId?: string
+}
+
+export function StatisticsOverview({ tutorId }: StatisticsOverviewProps) {
   const [stats, setStats] = useState<DetailedStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchDetailedStats()
-  }, [])
+  }, [tutorId])
 
   async function fetchDetailedStats() {
     const supabase = createClient()
 
     try {
+      let studentsQuery = supabase.from("students").select("id").eq("is_active", true)
+
+      if (tutorId) {
+        studentsQuery = studentsQuery.eq("tutor_id", tutorId).neq("tutor_id", 0)
+      }
+
+      const { data: tutorStudents, error: studentsError } = await studentsQuery
+
+      if (studentsError) throw studentsError
+
+      const studentIds = tutorStudents?.map((s) => s.id) || []
+
       // Получаем базовую статистику
       const { data: basicStats, error: basicError } = await supabase.rpc("get_statistics")
       if (basicError) throw basicError
 
-      // Получаем дополнительную статистику
       const startOfWeek = new Date()
       startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay())
       startOfWeek.setHours(0, 0, 0, 0)
 
-      const { data: weeklyLessons, error: weeklyError } = await supabase
+      let weeklyLessonsQuery = supabase
         .from("lessons")
         .select("price")
         .eq("status", "completed")
         .gte("scheduled_at", startOfWeek.toISOString())
 
+      if (tutorId && studentIds.length > 0) {
+        weeklyLessonsQuery = weeklyLessonsQuery.in("student_id", studentIds)
+      }
+
+      const { data: weeklyLessons, error: weeklyError } = await weeklyLessonsQuery
+
       if (weeklyError) throw weeklyError
 
-      const { data: completionData, error: completionError } = await supabase
-        .from("lessons")
-        .select("status")
-        .neq("status", "scheduled")
+      let completionQuery = supabase.from("lessons").select("status").neq("status", "scheduled")
+
+      if (tutorId && studentIds.length > 0) {
+        completionQuery = completionQuery.in("student_id", studentIds)
+      }
+
+      const { data: completionData, error: completionError } = await completionQuery
 
       if (completionError) throw completionError
 
-      const { data: avgPriceData, error: avgPriceError } = await supabase
-        .from("lessons")
-        .select("price")
-        .eq("status", "completed")
-        .not("price", "is", null)
+      let avgPriceQuery = supabase.from("lessons").select("price").eq("status", "completed").not("price", "is", null)
+
+      if (tutorId && studentIds.length > 0) {
+        avgPriceQuery = avgPriceQuery.in("student_id", studentIds)
+      }
+
+      const { data: avgPriceData, error: avgPriceError } = await avgPriceQuery
 
       if (avgPriceError) throw avgPriceError
 
@@ -75,13 +101,26 @@ export function StatisticsOverview() {
           ? avgPriceData.reduce((sum, lesson) => sum + (lesson.price || 0), 0) / avgPriceData.length
           : 0
 
-      const combinedStats = {
-        ...basicStats[0],
-        lessons_this_week: lessonsThisWeek,
-        revenue_this_week: revenueThisWeek,
-        average_lesson_price: avgPrice,
-        completion_rate: completionRate,
-      }
+      const combinedStats = tutorId
+        ? {
+            total_students: tutorStudents?.length || 0,
+            active_students: tutorStudents?.length || 0,
+            total_lessons_completed: completedLessons,
+            total_revenue: avgPriceData?.reduce((sum, lesson) => sum + (lesson.price || 0), 0) || 0,
+            lessons_this_month: 0, // TODO: добавить подсчет за месяц
+            revenue_this_month: 0, // TODO: добавить подсчет за месяц
+            lessons_this_week: lessonsThisWeek,
+            revenue_this_week: revenueThisWeek,
+            average_lesson_price: avgPrice,
+            completion_rate: completionRate,
+          }
+        : {
+            ...basicStats[0],
+            lessons_this_week: lessonsThisWeek,
+            revenue_this_week: revenueThisWeek,
+            average_lesson_price: avgPrice,
+            completion_rate: completionRate,
+          }
 
       setStats(combinedStats)
     } catch (error) {

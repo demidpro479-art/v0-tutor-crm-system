@@ -36,6 +36,7 @@ export function TutorDashboard({ userId }: TutorDashboardProps) {
         .from("students")
         .select("id")
         .eq("tutor_id", userId)
+        .neq("tutor_id", 0)
         .eq("is_active", true)
 
       if (studentsError) {

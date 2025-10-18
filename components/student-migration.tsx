@@ -21,8 +21,8 @@ export function StudentMigration({ students, tutors, onMigrationComplete }: Stud
   const [loading, setLoading] = useState(false)
   const { toast } = useToast()
 
-  const studentsWithoutTutor = students.filter((s) => !s.tutor_id || s.tutor_id === 0)
-  const studentsWithTutor = students.filter((s) => s.tutor_id && s.tutor_id !== 0)
+  const studentsWithoutTutor = students.filter((s) => !s.tutor_id || s.tutor_id === null)
+  const studentsWithTutor = students.filter((s) => s.tutor_id && s.tutor_id !== null)
 
   const toggleStudent = (studentId: string) => {
     setSelectedStudents((prev) =>

@@ -91,8 +91,9 @@ export function CalendarView({ tutorId }: CalendarViewProps) {
         .gte("scheduled_at", startOfMonth.toISOString())
         .lte("scheduled_at", endOfMonth.toISOString())
 
+      // If passed tutorId, filter lessons where tutor_id = tutorId (UUID) and NOT NULL
       if (tutorId) {
-        lessonsQuery = lessonsQuery.eq("students.tutor_id", tutorId).neq("students.tutor_id", 0)
+        lessonsQuery = lessonsQuery.eq("students.tutor_id", tutorId).not("students.tutor_id", "is", null)
       }
 
       const { data: lessonsData, error: lessonsError } = await lessonsQuery.order("scheduled_at")
@@ -114,8 +115,9 @@ export function CalendarView({ tutorId }: CalendarViewProps) {
         .eq("is_active", true)
         .order("name")
 
+      // If passed tutorId, filter students where tutor_id = tutorId (UUID) and NOT NULL
       if (tutorId) {
-        studentsQuery = studentsQuery.eq("tutor_id", tutorId).neq("tutor_id", 0)
+        studentsQuery = studentsQuery.eq("tutor_id", tutorId).not("tutor_id", "is", null)
       }
 
       const { data: studentsData, error: studentsError } = await studentsQuery

@@ -45,10 +45,9 @@ export function AdminDashboard() {
       .eq("role", "student")
       .order("created_at", { ascending: false })
 
-    console.log("[v0] AdminDashboard - Students из profiles (БЕЗ JOIN):", {
+    console.log("[v0] AdminDashboard - Students из profiles:", {
       count: studentsData?.length,
       error: studentsError,
-      data: studentsData,
       studentsWithNullTutor: studentsData?.filter((s) => s.tutor_id === null).length,
       studentsWithTutor: studentsData?.filter((s) => s.tutor_id !== null).length,
     })
@@ -79,13 +78,20 @@ export function AdminDashboard() {
       .eq("status", "completed")
       .gte("scheduled_at", startOfMonth.toISOString())
 
-    const totalRevenue = lessonsData?.reduce((sum, lesson) => sum + (Number(lesson.price) || 0), 0) || 0
+    const { data: paymentsData } = await supabase
+      .from("payments")
+      .select("amount")
+      .gte("created_at", startOfMonth.toISOString())
+
+    const totalRevenue = paymentsData?.reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0) || 0
+
     const { data: earningsData } = await supabase
       .from("tutor_earnings")
       .select("amount")
       .gte("created_at", startOfMonth.toISOString())
 
     const tutorEarnings = earningsData?.reduce((sum, e) => sum + (Number(e.amount) || 0), 0) || 0
+
     const netProfit = totalRevenue - tutorEarnings
 
     setUsers(usersData || [])
@@ -97,10 +103,11 @@ export function AdminDashboard() {
     })
     setLoading(false)
 
-    console.log("[v0] AdminDashboard - Данные загружены:", {
-      usersCount: usersData?.length,
-      studentsCount: studentsWithTutorNames.length,
-      studentsWithNullTutor: studentsWithTutorNames.filter((s) => s.tutor_id === null).length,
+    console.log("[v0] AdminDashboard - Статистика:", {
+      totalRevenue,
+      tutorEarnings,
+      netProfit,
+      completedLessons: lessonsData?.length,
     })
   }
 

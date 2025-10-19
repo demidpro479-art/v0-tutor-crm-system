@@ -34,93 +34,81 @@ export function StatisticsOverview({ tutorId }: StatisticsOverviewProps) {
     const supabase = createClient()
 
     try {
-      let studentsQuery = supabase.from("students").select("id").eq("is_active", true)
+      let studentsQuery = supabase.from("profiles").select("id, user_id").eq("role", "student")
 
       if (tutorId) {
-        studentsQuery = studentsQuery.eq("tutor_id", tutorId).neq("tutor_id", 0)
+        studentsQuery = studentsQuery.eq("tutor_id", tutorId).not("tutor_id", "is", null)
       }
 
       const { data: tutorStudents, error: studentsError } = await studentsQuery
 
       if (studentsError) throw studentsError
 
-      const studentIds = tutorStudents?.map((s) => s.id) || []
+      const studentUserIds = tutorStudents?.map((s) => s.user_id) || []
 
-      // Получаем базовую статистику
-      const { data: basicStats, error: basicError } = await supabase.rpc("get_statistics")
-      if (basicError) throw basicError
+      console.log("[v0] StatisticsOverview - Ученики:", {
+        tutorId,
+        count: studentUserIds.length,
+        studentUserIds,
+      })
+
+      let lessonsQuery = supabase.from("lessons").select("*").eq("status", "completed")
+
+      if (tutorId && studentUserIds.length > 0) {
+        lessonsQuery = lessonsQuery.in("student_id", studentUserIds)
+      }
+
+      const { data: completedLessons, error: lessonsError } = await lessonsQuery
+
+      if (lessonsError) throw lessonsError
+
+      const totalRevenue = completedLessons?.reduce((sum, lesson) => sum + (Number(lesson.price) || 0), 0) || 0
+
+      const startOfMonth = new Date()
+      startOfMonth.setDate(1)
+      startOfMonth.setHours(0, 0, 0, 0)
+
+      const lessonsThisMonth = completedLessons?.filter((l) => new Date(l.scheduled_at) >= startOfMonth).length || 0
+      const revenueThisMonth =
+        completedLessons
+          ?.filter((l) => new Date(l.scheduled_at) >= startOfMonth)
+          .reduce((sum, lesson) => sum + (Number(lesson.price) || 0), 0) || 0
 
       const startOfWeek = new Date()
       startOfWeek.setDate(startOfWeek.getDate() - startOfWeek.getDay())
       startOfWeek.setHours(0, 0, 0, 0)
 
-      let weeklyLessonsQuery = supabase
-        .from("lessons")
-        .select("price")
-        .eq("status", "completed")
-        .gte("scheduled_at", startOfWeek.toISOString())
+      const lessonsThisWeek = completedLessons?.filter((l) => new Date(l.scheduled_at) >= startOfWeek).length || 0
+      const revenueThisWeek =
+        completedLessons
+          ?.filter((l) => new Date(l.scheduled_at) >= startOfWeek)
+          .reduce((sum, lesson) => sum + (Number(lesson.price) || 0), 0) || 0
 
-      if (tutorId && studentIds.length > 0) {
-        weeklyLessonsQuery = weeklyLessonsQuery.in("student_id", studentIds)
+      const avgPrice = completedLessons?.length > 0 ? totalRevenue / completedLessons.length : 0
+
+      let allLessonsQuery = supabase.from("lessons").select("status")
+
+      if (tutorId && studentUserIds.length > 0) {
+        allLessonsQuery = allLessonsQuery.in("student_id", studentUserIds)
       }
 
-      const { data: weeklyLessons, error: weeklyError } = await weeklyLessonsQuery
+      const { data: allLessons } = await allLessonsQuery
+      const completionRate = allLessons?.length > 0 ? (completedLessons?.length / allLessons.length) * 100 : 0
 
-      if (weeklyError) throw weeklyError
-
-      let completionQuery = supabase.from("lessons").select("status").neq("status", "scheduled")
-
-      if (tutorId && studentIds.length > 0) {
-        completionQuery = completionQuery.in("student_id", studentIds)
+      const combinedStats = {
+        total_students: tutorStudents?.length || 0,
+        active_students: tutorStudents?.length || 0,
+        total_lessons_completed: completedLessons?.length || 0,
+        total_revenue: totalRevenue,
+        lessons_this_month: lessonsThisMonth,
+        revenue_this_month: revenueThisMonth,
+        lessons_this_week: lessonsThisWeek,
+        revenue_this_week: revenueThisWeek,
+        average_lesson_price: avgPrice,
+        completion_rate: completionRate,
       }
 
-      const { data: completionData, error: completionError } = await completionQuery
-
-      if (completionError) throw completionError
-
-      let avgPriceQuery = supabase.from("lessons").select("price").eq("status", "completed").not("price", "is", null)
-
-      if (tutorId && studentIds.length > 0) {
-        avgPriceQuery = avgPriceQuery.in("student_id", studentIds)
-      }
-
-      const { data: avgPriceData, error: avgPriceError } = await avgPriceQuery
-
-      if (avgPriceError) throw avgPriceError
-
-      // Вычисляем дополнительные метрики
-      const lessonsThisWeek = weeklyLessons?.length || 0
-      const revenueThisWeek = weeklyLessons?.reduce((sum, lesson) => sum + (lesson.price || 0), 0) || 0
-
-      const completedLessons = completionData?.filter((l) => l.status === "completed").length || 0
-      const totalNonScheduled = completionData?.length || 0
-      const completionRate = totalNonScheduled > 0 ? (completedLessons / totalNonScheduled) * 100 : 0
-
-      const avgPrice =
-        avgPriceData?.length > 0
-          ? avgPriceData.reduce((sum, lesson) => sum + (lesson.price || 0), 0) / avgPriceData.length
-          : 0
-
-      const combinedStats = tutorId
-        ? {
-            total_students: tutorStudents?.length || 0,
-            active_students: tutorStudents?.length || 0,
-            total_lessons_completed: completedLessons,
-            total_revenue: avgPriceData?.reduce((sum, lesson) => sum + (lesson.price || 0), 0) || 0,
-            lessons_this_month: 0, // TODO: добавить подсчет за месяц
-            revenue_this_month: 0, // TODO: добавить подсчет за месяц
-            lessons_this_week: lessonsThisWeek,
-            revenue_this_week: revenueThisWeek,
-            average_lesson_price: avgPrice,
-            completion_rate: completionRate,
-          }
-        : {
-            ...basicStats[0],
-            lessons_this_week: lessonsThisWeek,
-            revenue_this_week: revenueThisWeek,
-            average_lesson_price: avgPrice,
-            completion_rate: completionRate,
-          }
+      console.log("[v0] StatisticsOverview - Статистика:", combinedStats)
 
       setStats(combinedStats)
     } catch (error) {

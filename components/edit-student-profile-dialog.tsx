@@ -66,6 +66,8 @@ export function EditStudentProfileDialog({
         })
 
         if (paymentError) throw paymentError
+
+        console.log("[v0] Корректировка уроков:", { studentId: student.id, diff: lessonsDiff })
       }
 
       toast({
@@ -76,7 +78,7 @@ export function EditStudentProfileDialog({
       onStudentUpdated()
       onOpenChange(false)
     } catch (error: any) {
-      console.error("Ошибка обновления профиля:", error)
+      console.error("[v0] Ошибка обновления профиля:", error)
       toast({
         title: "Ошибка",
         description: error.message || "Не удалось обновить профиль",

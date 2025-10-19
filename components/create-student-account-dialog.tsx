@@ -63,11 +63,13 @@ export function CreateStudentAccountDialog({ studentId, studentName, studentEmai
           .from("profiles")
           .update({
             student_id: studentId,
-            tutor_id: user.id, // Устанавливаем ID репетитора
+            tutor_id: user.id, // ID репетитора
           })
           .eq("id", data.user.id)
 
         if (profileError) throw profileError
+
+        console.log("[v0] Ученик создан с tutor_id:", user.id)
       }
 
       setCredentials({ email, password })

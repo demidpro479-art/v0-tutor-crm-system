@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Plus } from "lucide-react"
+import { Plus, Upload } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 interface AddPaymentDialogProps {
@@ -21,6 +21,7 @@ export function AddPaymentDialog({ onPaymentAdded, managerId }: AddPaymentDialog
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [students, setStudents] = useState<any[]>([])
+  const [receiptFile, setReceiptFile] = useState<File | null>(null)
   const { toast } = useToast()
 
   const [formData, setFormData] = useState({
@@ -31,24 +32,46 @@ export function AddPaymentDialog({ onPaymentAdded, managerId }: AddPaymentDialog
 
   async function loadStudents() {
     const supabase = createBrowserClient()
-    const { data } = await supabase.from("students").select("id, name").order("name")
+    const { data } = await supabase.from("profiles").select("id, full_name").eq("role", "student").order("full_name")
 
     setStudents(data || [])
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
+    if (!receiptFile) {
+      toast({
+        title: "Ошибка",
+        description: "Необходимо прикрепить чек или квитанцию",
+        variant: "destructive",
+      })
+      return
+    }
+
     setLoading(true)
 
     try {
       const supabase = createBrowserClient()
 
+      const fileExt = receiptFile.name.split(".").pop()
+      const fileName = `${managerId}_${Date.now()}.${fileExt}`
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("receipts")
+        .upload(fileName, receiptFile)
+
+      if (uploadError) throw uploadError
+
+      const {
+        data: { publicUrl },
+      } = supabase.storage.from("receipts").getPublicUrl(fileName)
+
       const { error: paymentError } = await supabase.from("payments").insert({
         student_id: formData.student_id,
         amount: Number.parseFloat(formData.amount),
         lessons_purchased: Number.parseInt(formData.lessons_purchased),
-        manager_id: managerId,
-        status: "completed",
+        receipt_url: publicUrl,
+        notes: `Платеж добавлен менеджером ${managerId}`,
       })
 
       if (paymentError) throw paymentError
@@ -71,8 +94,10 @@ export function AddPaymentDialog({ onPaymentAdded, managerId }: AddPaymentDialog
         amount: "",
         lessons_purchased: "",
       })
+      setReceiptFile(null)
       onPaymentAdded()
     } catch (error: any) {
+      console.error("[v0] Ошибка добавления платежа:", error)
       toast({
         title: "Ошибка",
         description: error.message,
@@ -108,7 +133,7 @@ export function AddPaymentDialog({ onPaymentAdded, managerId }: AddPaymentDialog
               <SelectContent>
                 {students.map((student) => (
                   <SelectItem key={student.id} value={student.id}>
-                    {student.name}
+                    {student.full_name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -135,6 +160,22 @@ export function AddPaymentDialog({ onPaymentAdded, managerId }: AddPaymentDialog
               onChange={(e) => setFormData({ ...formData, lessons_purchased: e.target.value })}
               required
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="receipt">Чек или квитанция *</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="receipt"
+                type="file"
+                accept="image/*,.pdf"
+                onChange={(e) => setReceiptFile(e.target.files?.[0] || null)}
+                required
+                className="flex-1"
+              />
+              <Upload className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <p className="text-xs text-muted-foreground">Обязательно прикрепите чек или квитанцию об оплате</p>
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>

@@ -65,7 +65,7 @@ export function StudentMigration({ students, tutors, onMigrationComplete }: Stud
         targetTutor,
       })
 
-      const { error } = await supabase.from("students").update({ tutor_id: targetTutor }).in("id", selectedStudents)
+      const { error } = await supabase.from("profiles").update({ tutor_id: targetTutor }).in("id", selectedStudents)
 
       if (error) throw error
 

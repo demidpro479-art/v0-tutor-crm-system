@@ -41,20 +41,33 @@ export function AdminDashboard() {
 
     const { data: studentsData, error: studentsError } = await supabase
       .from("profiles")
-      .select(`
-        *,
-        tutor:users!profiles_tutor_id_fkey(full_name)
-      `)
+      .select("*")
       .eq("role", "student")
       .order("created_at", { ascending: false })
 
-    console.log("[v0] AdminDashboard - Students из profiles:", {
+    console.log("[v0] AdminDashboard - Students из profiles (БЕЗ JOIN):", {
       count: studentsData?.length,
       error: studentsError,
       data: studentsData,
       studentsWithNullTutor: studentsData?.filter((s) => s.tutor_id === null).length,
       studentsWithTutor: studentsData?.filter((s) => s.tutor_id !== null).length,
     })
+
+    let studentsWithTutorNames = studentsData || []
+    if (studentsData && studentsData.length > 0) {
+      const tutorIds = [...new Set(studentsData.filter((s) => s.tutor_id).map((s) => s.tutor_id))]
+
+      if (tutorIds.length > 0) {
+        const { data: tutorsData } = await supabase.from("users").select("id, full_name").in("id", tutorIds)
+
+        const tutorsMap = new Map(tutorsData?.map((t) => [t.id, t]) || [])
+
+        studentsWithTutorNames = studentsData.map((student) => ({
+          ...student,
+          tutor: student.tutor_id ? tutorsMap.get(student.tutor_id) : null,
+        }))
+      }
+    }
 
     const startOfMonth = new Date()
     startOfMonth.setDate(1)
@@ -76,7 +89,7 @@ export function AdminDashboard() {
     const netProfit = totalRevenue - tutorEarnings
 
     setUsers(usersData || [])
-    setStudents(studentsData || [])
+    setStudents(studentsWithTutorNames)
     setMonthlyStats({
       total_revenue: totalRevenue,
       net_profit: netProfit,
@@ -86,8 +99,8 @@ export function AdminDashboard() {
 
     console.log("[v0] AdminDashboard - Данные загружены:", {
       usersCount: usersData?.length,
-      studentsCount: studentsData?.length,
-      studentsWithNullTutor: studentsData?.filter((s) => s.tutor_id === null).length,
+      studentsCount: studentsWithTutorNames.length,
+      studentsWithNullTutor: studentsWithTutorNames.filter((s) => s.tutor_id === null).length,
     })
   }
 

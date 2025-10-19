@@ -32,29 +32,33 @@ export function ManagerDashboard({ userId }: ManagerDashboardProps) {
     setLoading(true)
     const supabase = createBrowserClient()
 
-    // Get week start date
     const weekStart = new Date()
     weekStart.setDate(weekStart.getDate() - weekStart.getDay())
     weekStart.setHours(0, 0, 0, 0)
 
-    // Get week sales
     const { data: payments } = await supabase
       .from("payments")
       .select("amount")
+      .gte("created_at", weekStart.toISOString())
+
+    const weekSales = payments?.reduce((sum, p) => sum + Number(p.amount || 0), 0) || 0
+
+    const { data: operations } = await supabase
+      .from("manager_operations")
+      .select("amount, manager_commission")
       .eq("manager_id", userId)
       .gte("created_at", weekStart.toISOString())
 
-    const weekSales = payments?.reduce((sum, p) => sum + p.amount, 0) || 0
+    const weekCommissions = operations?.reduce((sum, op) => sum + Number(op.manager_commission || 0), 0) || 0
+    const weekEarnings = 500 + weekCommissions
 
-    // Calculate earnings: 500 + 5% of sales
-    const weekEarnings = 500 + weekSales * 0.05
+    const { count: studentsCount } = await supabase
+      .from("profiles")
+      .select("*", { count: "only", head: true })
+      .eq("role", "student")
 
-    // Get total students
-    const { count: studentsCount } = await supabase.from("students").select("*", { count: "only", head: true })
-
-    // Get pending payments
     const { count: pendingCount } = await supabase
-      .from("payments")
+      .from("manager_operations")
       .select("*", { count: "only", head: true })
       .eq("status", "pending")
 
@@ -105,7 +109,7 @@ export function ManagerDashboard({ userId }: ManagerDashboardProps) {
                 <p className="text-3xl font-bold text-blue-900">
                   {loading ? <Loader2 className="h-8 w-8 animate-spin" /> : `${stats.weekEarnings.toFixed(0)} ₽`}
                 </p>
-                <p className="text-xs text-blue-600 mt-1">500₽ + 5% от продаж</p>
+                <p className="text-xs text-blue-600 mt-1">500₽ + комиссия от операций</p>
               </div>
             </div>
           </Card>

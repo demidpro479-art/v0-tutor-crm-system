@@ -37,10 +37,9 @@ export function TutorDashboard({ userId }: TutorDashboardProps) {
 
       const { data: students, error: studentsError } = await supabase
         .from("profiles")
-        .select("id, user_id")
+        .select("id, user_id, full_name, email")
         .eq("role", "student")
         .eq("tutor_id", userId)
-        .not("tutor_id", "is", null)
 
       console.log("[v0] TutorDashboard - Students из profiles:", {
         count: students?.length,
@@ -54,11 +53,11 @@ export function TutorDashboard({ userId }: TutorDashboardProps) {
         return
       }
 
-      const studentUserIds = students?.map((s) => s.user_id) || []
+      const studentIds = students?.map((s) => s.id) || []
 
-      console.log("[v0] TutorDashboard - Student user_ids:", studentUserIds)
+      console.log("[v0] TutorDashboard - Student ids:", studentIds)
 
-      if (studentUserIds.length === 0) {
+      if (studentIds.length === 0) {
         setStats({
           totalStudents: 0,
           completedLessons: 0,
@@ -69,7 +68,7 @@ export function TutorDashboard({ userId }: TutorDashboardProps) {
         return
       }
 
-      const { data: lessonsData } = await supabase.from("lessons").select("*").in("student_id", studentUserIds)
+      const { data: lessonsData } = await supabase.from("lessons").select("*").in("student_id", studentIds)
 
       console.log("[v0] TutorDashboard - Lessons:", {
         count: lessonsData?.length,
@@ -80,14 +79,7 @@ export function TutorDashboard({ userId }: TutorDashboardProps) {
       const upcomingCount =
         lessonsData?.filter((l) => l.status === "scheduled" && new Date(l.scheduled_at) >= new Date()).length || 0
 
-      const { data: earnings, error: earningsError } = await supabase
-        .from("tutor_earnings")
-        .select("amount")
-        .eq("tutor_id", userId)
-
-      if (earningsError) {
-        console.error("[v0] Error loading earnings:", earningsError)
-      }
+      const { data: earnings } = await supabase.from("tutor_earnings").select("amount").eq("tutor_id", userId)
 
       const totalEarnings = earnings?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0
 

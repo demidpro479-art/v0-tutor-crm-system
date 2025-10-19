@@ -141,7 +141,7 @@ export default async function DashboardPage() {
         <div className="px-4 py-6 sm:px-6 lg:px-8">
           {(activeRole === "super_admin" || activeRole === "admin") && <AdminDashboard />}
           {activeRole === "tutor" && <TutorDashboard userId={userData.id} />}
-          {activeRole === "manager" && <ManagerDashboard />}
+          {activeRole === "manager" && <ManagerDashboard userId={userData.id} />}
           {activeRole === "student" && <StudentDashboard />}
         </div>
       </main>

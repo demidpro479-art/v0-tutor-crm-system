@@ -3,7 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Plus, User, Phone, Mail, BookOpen, DollarSign } from "lucide-react"
+import { Plus, User, Mail, BookOpen, DollarSign } from "lucide-react"
 import { useEffect, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { AddStudentDialog } from "./add-student-dialog"
@@ -12,16 +12,13 @@ import { useToast } from "@/hooks/use-toast"
 
 interface Student {
   id: string
-  name: string
+  user_id: string
+  full_name: string
   email: string
-  phone: string
-  notes: string
   total_paid_lessons: number
   remaining_lessons: number
-  hourly_rate: number
   is_active: boolean
   created_at: string
-  deleted_at: string | null
 }
 
 interface StudentsOverviewProps {
@@ -43,15 +40,14 @@ export function StudentsOverview({ tutorId }: StudentsOverviewProps) {
     const supabase = createClient()
 
     try {
-      console.log("[v0] Загрузка учеников для репетитора:", tutorId)
+      console.log("[v0] StudentsOverview - Загрузка учеников для репетитора:", tutorId)
 
-      let query = supabase.from("students").select("*").is("deleted_at", null).order("created_at", { ascending: false })
-
-      if (tutorId) {
-        query = query.eq("tutor_id", tutorId).not("tutor_id", "is", null)
-      }
-
-      const { data, error } = await query
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, user_id, full_name, email, created_at")
+        .eq("role", "student")
+        .eq("tutor_id", tutorId)
+        .order("created_at", { ascending: false })
 
       if (error) {
         console.error("[v0] Ошибка загрузки учеников:", error)
@@ -63,10 +59,33 @@ export function StudentsOverview({ tutorId }: StudentsOverviewProps) {
         throw error
       }
 
-      console.log("[v0] Загружено учеников:", data?.length || 0)
-      console.log("[v0] Данные учеников:", data)
+      console.log("[v0] StudentsOverview - Загружено учеников:", data?.length || 0)
 
-      setStudents(data || [])
+      const studentsWithLessons = await Promise.all(
+        (data || []).map(async (student) => {
+          const { data: paymentsData } = await supabase
+            .from("payments")
+            .select("lessons_purchased")
+            .eq("student_id", student.id)
+
+          const totalPaid = paymentsData?.reduce((sum, p) => sum + (p.lessons_purchased || 0), 0) || 0
+
+          const { count: completedCount } = await supabase
+            .from("lessons")
+            .select("*", { count: "only", head: true })
+            .eq("student_id", student.id)
+            .eq("status", "completed")
+
+          return {
+            ...student,
+            total_paid_lessons: totalPaid,
+            remaining_lessons: totalPaid - (completedCount || 0),
+            is_active: true,
+          }
+        }),
+      )
+
+      setStudents(studentsWithLessons)
     } catch (error) {
       console.error("[v0] Ошибка загрузки учеников:", error)
     } finally {
@@ -141,18 +160,12 @@ export function StudentsOverview({ tutorId }: StudentsOverviewProps) {
                           <User className="h-5 w-5 text-primary" />
                         </div>
                         <div>
-                          <h3 className="font-medium">{student.name}</h3>
+                          <h3 className="font-medium">{student.full_name}</h3>
                           <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                             {student.email && (
                               <div className="flex items-center">
                                 <Mail className="h-3 w-3 mr-1" />
                                 {student.email}
-                              </div>
-                            )}
-                            {student.phone && (
-                              <div className="flex items-center">
-                                <Phone className="h-3 w-3 mr-1" />
-                                {student.phone}
                               </div>
                             )}
                           </div>
@@ -168,7 +181,7 @@ export function StudentsOverview({ tutorId }: StudentsOverviewProps) {
                           </div>
                           <div className="flex items-center text-sm text-muted-foreground">
                             <DollarSign className="h-3 w-3 mr-1" />
-                            <span>₽{student.hourly_rate}/час</span>
+                            <span>Оплачено: {student.total_paid_lessons}</span>
                           </div>
                         </div>
 
@@ -185,14 +198,25 @@ export function StudentsOverview({ tutorId }: StudentsOverviewProps) {
         </CardContent>
       </Card>
 
-      <AddStudentDialog open={showAddDialog} onOpenChange={setShowAddDialog} onStudentAdded={handleStudentAdded} />
+      <AddStudentDialog
+        open={showAddDialog}
+        onOpenChange={setShowAddDialog}
+        onStudentAdded={() => {
+          fetchStudents()
+          setShowAddDialog(false)
+        }}
+        tutorId={tutorId}
+      />
 
       {selectedStudent && (
         <StudentDetailsDialog
           student={selectedStudent}
           open={!!selectedStudent}
           onOpenChange={(open) => !open && setSelectedStudent(null)}
-          onStudentUpdated={handleStudentUpdated}
+          onStudentUpdated={() => {
+            fetchStudents()
+            setSelectedStudent(null)
+          }}
         />
       )}
     </>

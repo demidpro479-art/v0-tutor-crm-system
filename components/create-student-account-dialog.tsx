@@ -39,6 +39,8 @@ export function CreateStudentAccountDialog({ studentId, studentName, studentEmai
       } = await supabase.auth.getUser()
       if (!user) throw new Error("Пользователь не авторизован")
 
+      const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+
       // Генерируем случайный пароль
       const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase()
       const email = studentEmail || `student_${studentId.slice(0, 8)}@tutor-crm.local`
@@ -59,17 +61,18 @@ export function CreateStudentAccountDialog({ studentId, studentName, studentEmai
       if (error) throw error
 
       if (data.user) {
-        const { error: profileError } = await supabase
-          .from("profiles")
-          .update({
-            student_id: studentId,
-            tutor_id: user.id, // ID репетитора
-          })
-          .eq("id", data.user.id)
+        const updateData: any = {
+          student_id: studentId,
+        }
+
+        if (profile?.role === "tutor") {
+          updateData.tutor_id = user.id
+          console.log("[v0] Ученик создан репетитором, устанавливаем tutor_id:", user.id)
+        }
+
+        const { error: profileError } = await supabase.from("profiles").update(updateData).eq("id", data.user.id)
 
         if (profileError) throw profileError
-
-        console.log("[v0] Ученик создан с tutor_id:", user.id)
       }
 
       setCredentials({ email, password })

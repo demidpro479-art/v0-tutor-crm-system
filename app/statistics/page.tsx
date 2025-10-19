@@ -16,6 +16,11 @@ export default async function StatisticsPage() {
     redirect("/auth/login")
   }
 
+  const { data: profile } = await supabase.from("profiles").select("role, id").eq("id", data.user.id).single()
+
+  const userRole = profile?.role
+  const userId = profile?.id
+
   return (
     <div className="min-h-screen bg-background">
       <Navigation />
@@ -24,11 +29,15 @@ export default async function StatisticsPage() {
         <div className="px-4 py-6 sm:px-6 lg:px-8">
           <div className="mb-8">
             <h1 className="text-3xl font-bold text-foreground mb-2">Статистика и аналитика</h1>
-            <p className="text-muted-foreground">Подробная статистика по урокам, доходам и ученикам</p>
+            <p className="text-muted-foreground">
+              {userRole === "admin" && "Полная статистика по всей системе"}
+              {userRole === "manager" && "Статистика по всем ученикам и урокам"}
+              {userRole === "tutor" && "Статистика по вашим ученикам и урокам"}
+            </p>
           </div>
 
           <div className="space-y-8">
-            <StatisticsOverview />
+            <StatisticsOverview tutorId={userRole === "tutor" ? userId : undefined} role={userRole} />
 
             <div className="grid gap-6 lg:grid-cols-2">
               <RevenueChart />

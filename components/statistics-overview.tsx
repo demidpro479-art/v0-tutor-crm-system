@@ -20,15 +20,16 @@ interface DetailedStats {
 
 interface StatisticsOverviewProps {
   tutorId?: string
+  role?: string
 }
 
-export function StatisticsOverview({ tutorId }: StatisticsOverviewProps) {
+export function StatisticsOverview({ tutorId, role }: StatisticsOverviewProps) {
   const [stats, setStats] = useState<DetailedStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetchDetailedStats()
-  }, [tutorId])
+  }, [tutorId, role])
 
   async function fetchDetailedStats() {
     const supabase = createClient()
@@ -36,17 +37,25 @@ export function StatisticsOverview({ tutorId }: StatisticsOverviewProps) {
     try {
       let studentsQuery = supabase.from("profiles").select("id, user_id").eq("role", "student")
 
-      if (tutorId) {
+      if (role === "tutor" && tutorId) {
+        // Репетитор видит только своих учеников
         studentsQuery = studentsQuery.eq("tutor_id", tutorId).not("tutor_id", "is", null)
+      } else if (role === "manager") {
+        // Менеджер видит всех учеников
+        // Без дополнительных фильтров
+      } else if (role === "admin") {
+        // ГА видит всех учеников
+        // Без дополнительных фильтров
       }
 
       const { data: tutorStudents, error: studentsError } = await studentsQuery
 
       if (studentsError) throw studentsError
 
-      const studentUserIds = tutorStudents?.map((s) => s.user_id) || []
+      const studentUserIds = tutorStudents?.map((s) => s.user_id).filter(Boolean) || []
 
       console.log("[v0] StatisticsOverview - Ученики:", {
+        role,
         tutorId,
         count: studentUserIds.length,
         studentUserIds,
@@ -54,8 +63,24 @@ export function StatisticsOverview({ tutorId }: StatisticsOverviewProps) {
 
       let lessonsQuery = supabase.from("lessons").select("*").eq("status", "completed")
 
-      if (tutorId && studentUserIds.length > 0) {
+      if ((role === "tutor" || role === "manager") && studentUserIds.length > 0) {
         lessonsQuery = lessonsQuery.in("student_id", studentUserIds)
+      } else if (studentUserIds.length === 0 && role === "tutor") {
+        // Если у репетитора нет учеников, возвращаем пустую статистику
+        setStats({
+          total_students: 0,
+          active_students: 0,
+          total_lessons_completed: 0,
+          total_revenue: 0,
+          lessons_this_month: 0,
+          revenue_this_month: 0,
+          lessons_this_week: 0,
+          revenue_this_week: 0,
+          average_lesson_price: 0,
+          completion_rate: 0,
+        })
+        setLoading(false)
+        return
       }
 
       const { data: completedLessons, error: lessonsError } = await lessonsQuery
@@ -88,7 +113,7 @@ export function StatisticsOverview({ tutorId }: StatisticsOverviewProps) {
 
       let allLessonsQuery = supabase.from("lessons").select("status")
 
-      if (tutorId && studentUserIds.length > 0) {
+      if ((role === "tutor" || role === "manager") && studentUserIds.length > 0) {
         allLessonsQuery = allLessonsQuery.in("student_id", studentUserIds)
       }
 

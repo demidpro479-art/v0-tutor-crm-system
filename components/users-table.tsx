@@ -66,13 +66,15 @@ export function UsersTable({ users, onUpdate }: UsersTableProps) {
   }
 
   const handleDelete = async (userId: string) => {
-    if (!confirm("Вы уверены, что хотите удалить этого пользователя?")) {
+    if (!confirm("Вы уверены, что хотите удалить этого пользователя? Это действие необратимо.")) {
       return
     }
 
     try {
       const supabase = createClient()
-      const { error } = await supabase.from("users").delete().eq("id", userId)
+
+      // Удаляем профиль пользователя (каскадное удаление обработает связанные записи)
+      const { error } = await supabase.from("profiles").delete().eq("id", userId)
 
       if (error) throw error
 
@@ -82,11 +84,11 @@ export function UsersTable({ users, onUpdate }: UsersTableProps) {
       })
 
       onUpdate()
-    } catch (error) {
+    } catch (error: any) {
       console.error("Ошибка удаления пользователя:", error)
       toast({
         title: "Ошибка",
-        description: "Не удалось удалить пользователя",
+        description: error.message || "Не удалось удалить пользователя",
         variant: "destructive",
       })
     }

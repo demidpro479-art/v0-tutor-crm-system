@@ -79,9 +79,8 @@ export function TutorDashboard({ userId }: TutorDashboardProps) {
       const upcomingCount =
         lessonsData?.filter((l) => l.status === "scheduled" && new Date(l.scheduled_at) >= new Date()).length || 0
 
-      const { data: earnings } = await supabase.from("tutor_earnings").select("amount").eq("tutor_id", userId)
-
-      const totalEarnings = earnings?.reduce((sum, e) => sum + Number(e.amount || 0), 0) || 0
+      const completedLessons = lessonsData?.filter((l) => l.status === "completed") || []
+      const totalEarnings = completedLessons.reduce((sum, lesson) => sum + Number(lesson.price || 500), 0)
 
       setStats({
         totalStudents: students?.length || 0,

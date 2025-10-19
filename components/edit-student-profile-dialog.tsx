@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,8 +15,8 @@ interface Student {
   id: string
   full_name: string
   email: string
-  total_paid_lessons: number
-  remaining_lessons: number
+  total_paid_lessons?: number
+  remaining_lessons?: number
 }
 
 interface EditStudentProfileDialogProps {
@@ -35,8 +35,14 @@ export function EditStudentProfileDialog({
   const [loading, setLoading] = useState(false)
   const [fullName, setFullName] = useState(student.full_name)
   const [email, setEmail] = useState(student.email)
-  const [totalLessons, setTotalLessons] = useState(student.total_paid_lessons)
+  const [totalLessons, setTotalLessons] = useState(student.total_paid_lessons || 0)
   const { toast } = useToast()
+
+  useEffect(() => {
+    setFullName(student.full_name)
+    setEmail(student.email)
+    setTotalLessons(student.total_paid_lessons || 0)
+  }, [student])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,8 +61,9 @@ export function EditStudentProfileDialog({
 
       if (profileError) throw profileError
 
-      if (totalLessons !== student.total_paid_lessons) {
-        const lessonsDiff = totalLessons - student.total_paid_lessons
+      const currentTotalLessons = student.total_paid_lessons || 0
+      if (totalLessons !== currentTotalLessons) {
+        const lessonsDiff = totalLessons - currentTotalLessons
 
         const { error: paymentError } = await supabase.from("payments").insert({
           student_id: student.id,
@@ -143,7 +150,7 @@ export function EditStudentProfileDialog({
                 <Plus className="h-4 w-4" />
               </Button>
             </div>
-            <p className="text-sm text-muted-foreground">Текущий остаток: {student.remaining_lessons} уроков</p>
+            <p className="text-sm text-muted-foreground">Текущий остаток: {student.remaining_lessons || 0} уроков</p>
           </div>
 
           <DialogFooter>

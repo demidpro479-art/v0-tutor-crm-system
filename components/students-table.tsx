@@ -72,7 +72,13 @@ export function StudentsTable({ students, tutors, onUpdate }: StudentsTableProps
                 {students.map((student) => (
                   <Card
                     key={student.id}
-                    className="p-4 hover:shadow-md transition-all duration-200 border-l-4 border-l-primary"
+                    className="p-4 hover:shadow-md transition-all duration-200 border-l-4 border-l-primary cursor-pointer"
+                    onClick={() => {
+                      if (onUpdate) {
+                        // TODO: Открыть диалог редактирования ученика
+                        console.log("[v0] Клик на ученика:", student)
+                      }
+                    }}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -114,7 +120,7 @@ export function StudentsTable({ students, tutors, onUpdate }: StudentsTableProps
                             <span>Оплачено: {student.total_paid_lessons || 0}</span>
                           </div>
                           <div className="text-sm font-semibold text-primary">
-                            Осталось: {student.remaining_lessons || 0}
+                            Осталось: {(student.total_paid_lessons || 0) - (student.remaining_lessons || 0)}
                           </div>
                         </div>
                       </div>

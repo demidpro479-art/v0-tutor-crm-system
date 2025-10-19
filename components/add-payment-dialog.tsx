@@ -27,7 +27,6 @@ export function AddPaymentDialog({ onPaymentAdded, managerId }: AddPaymentDialog
     student_id: "",
     amount: "",
     lessons_purchased: "",
-    receipt_url: "",
   })
 
   async function loadStudents() {
@@ -44,19 +43,16 @@ export function AddPaymentDialog({ onPaymentAdded, managerId }: AddPaymentDialog
     try {
       const supabase = createBrowserClient()
 
-      // Add payment
       const { error: paymentError } = await supabase.from("payments").insert({
         student_id: formData.student_id,
         amount: Number.parseFloat(formData.amount),
         lessons_purchased: Number.parseInt(formData.lessons_purchased),
         manager_id: managerId,
-        receipt_url: formData.receipt_url || null,
         status: "completed",
       })
 
       if (paymentError) throw paymentError
 
-      // Update student's paid lessons
       const { error: updateError } = await supabase.rpc("add_paid_lessons", {
         p_student_id: formData.student_id,
         p_lessons_count: Number.parseInt(formData.lessons_purchased),
@@ -74,7 +70,6 @@ export function AddPaymentDialog({ onPaymentAdded, managerId }: AddPaymentDialog
         student_id: "",
         amount: "",
         lessons_purchased: "",
-        receipt_url: "",
       })
       onPaymentAdded()
     } catch (error: any) {
@@ -139,17 +134,6 @@ export function AddPaymentDialog({ onPaymentAdded, managerId }: AddPaymentDialog
               value={formData.lessons_purchased}
               onChange={(e) => setFormData({ ...formData, lessons_purchased: e.target.value })}
               required
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="receipt">Ссылка на чек (необязательно)</Label>
-            <Input
-              id="receipt"
-              type="url"
-              placeholder="https://..."
-              value={formData.receipt_url}
-              onChange={(e) => setFormData({ ...formData, receipt_url: e.target.value })}
             />
           </div>
 

@@ -34,12 +34,16 @@ export function CreateStudentAccountDialog({ studentId, studentName, studentEmai
     setLoading(true)
 
     try {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser()
+      if (!user) throw new Error("Пользователь не авторизован")
+
       // Генерируем случайный пароль
       const password = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase()
       const email = studentEmail || `student_${studentId.slice(0, 8)}@tutor-crm.local`
 
       // Создаем учетную запись через Supabase Admin API
-      // Примечание: в реальном приложении это должно быть через серверный API endpoint
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -54,11 +58,13 @@ export function CreateStudentAccountDialog({ studentId, studentName, studentEmai
 
       if (error) throw error
 
-      // Обновляем профиль ученика, связывая его с student_id
       if (data.user) {
         const { error: profileError } = await supabase
           .from("profiles")
-          .update({ student_id: studentId })
+          .update({
+            student_id: studentId,
+            tutor_id: user.id, // Устанавливаем ID репетитора
+          })
           .eq("id", data.user.id)
 
         if (profileError) throw profileError

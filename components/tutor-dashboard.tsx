@@ -10,6 +10,7 @@ import { StudentsOverview } from "@/components/students-overview"
 import { CalendarView } from "@/components/calendar-view"
 import { TutorEarningsOverview } from "@/components/tutor-earnings-overview"
 import { Loader2 } from "lucide-react"
+import { TutorBalanceWidget } from "@/components/tutor-balance-widget"
 
 interface TutorDashboardProps {
   userId: string
@@ -120,7 +121,10 @@ export function TutorDashboard({ userId }: TutorDashboardProps) {
             </h1>
             <p className="mt-2 text-slate-600 text-lg">Управляйте своими учениками и отслеживайте заработок</p>
           </div>
-          <AddStudentDialog onStudentAdded={loadStats} tutorId={userId} />
+          <div className="flex gap-4 items-center">
+            <TutorBalanceWidget userId={userId} />
+            <AddStudentDialog onStudentAdded={loadStats} tutorId={userId} />
+          </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 animate-in fade-in slide-in-from-bottom-4 duration-700">

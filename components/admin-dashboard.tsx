@@ -11,6 +11,7 @@ import { StudentsTable } from "@/components/students-table"
 import { AdminPaymentManagement } from "@/components/admin-payment-management"
 import { StudentsByTutor } from "@/components/students-by-tutor"
 import { StudentMigration } from "@/components/student-migration"
+import { AdminPayoutsManagement } from "@/components/admin-payouts-management"
 import { createClient } from "@/lib/supabase/client"
 
 export function AdminDashboard() {
@@ -235,6 +236,13 @@ export function AdminDashboard() {
               <DollarSign className="mr-2 h-4 w-4" />
               Зарплаты
             </TabsTrigger>
+            <TabsTrigger
+              value="payouts"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white data-[state=active]:shadow-md transition-all duration-300"
+            >
+              <DollarSign className="mr-2 h-4 w-4" />
+              Выплаты
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="users" className="animate-in fade-in slide-in-from-bottom-2 duration-500">
@@ -254,6 +262,10 @@ export function AdminDashboard() {
 
           <TabsContent value="salary" className="animate-in fade-in slide-in-from-bottom-2 duration-500">
             <AdminPaymentManagement />
+          </TabsContent>
+
+          <TabsContent value="payouts" className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+            <AdminPayoutsManagement />
           </TabsContent>
         </Tabs>
       </div>

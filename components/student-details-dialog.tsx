@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -12,27 +12,22 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
 import { Separator } from "@/components/ui/separator"
 import { createClient } from "@/lib/supabase/client"
-import { Plus, Trash2, UserPlus, Copy, Check } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Plus, Minus, Save, X } from "lucide-react"
+import { toast } from "sonner"
 
 interface Student {
   id: string
-  name: string
+  user_id?: string
+  full_name: string
   email: string
-  phone: string
-  notes: string
-  total_paid_lessons: number
-  remaining_lessons: number
-  hourly_rate: number
-  is_active: boolean
+  phone_number?: string
+  total_paid_lessons?: number
+  remaining_lessons?: number
+  completed_lessons?: number
+  is_active?: boolean
   created_at: string
-  student_login?: string
-  student_password?: string
-  has_account?: boolean
 }
 
 interface StudentDetailsDialogProps {
@@ -44,20 +39,23 @@ interface StudentDetailsDialogProps {
 
 export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpdated }: StudentDetailsDialogProps) {
   const [loading, setLoading] = useState(false)
-  const [showAddLessons, setShowAddLessons] = useState(false)
-  const [lessonsToAdd, setLessonsToAdd] = useState("")
-  const [paymentAmount, setPaymentAmount] = useState("")
-  const [copiedLogin, setCopiedLogin] = useState(false)
-  const [copiedPassword, setCopiedPassword] = useState(false)
-  const { toast } = useToast()
   const [formData, setFormData] = useState({
-    name: student.name,
+    full_name: student.full_name || "",
     email: student.email || "",
-    phone: student.phone || "",
-    hourly_rate: student.hourly_rate.toString(),
-    notes: student.notes || "",
-    is_active: student.is_active,
+    phone_number: student.phone_number || "",
+    total_paid_lessons: student.total_paid_lessons || 0,
+    completed_lessons: student.completed_lessons || 0,
   })
+
+  useEffect(() => {
+    setFormData({
+      full_name: student.full_name || "",
+      email: student.email || "",
+      phone_number: student.phone_number || "",
+      total_paid_lessons: student.total_paid_lessons || 0,
+      completed_lessons: student.completed_lessons || 0,
+    })
+  }, [student])
 
   const handleUpdate = async () => {
     setLoading(true)
@@ -65,323 +63,173 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
     try {
       const supabase = createClient()
 
+      console.log("[v0] Обновление ученика:", student.id, formData)
+
       const { error } = await supabase
-        .from("students")
+        .from("profiles")
         .update({
-          name: formData.name,
-          email: formData.email || null,
-          phone: formData.phone || null,
-          hourly_rate: Number.parseFloat(formData.hourly_rate) || 0,
-          notes: formData.notes || null,
-          is_active: formData.is_active,
+          full_name: formData.full_name,
+          email: formData.email,
+          phone_number: formData.phone_number || null,
+          total_paid_lessons: formData.total_paid_lessons,
+          completed_lessons: formData.completed_lessons,
         })
         .eq("id", student.id)
 
-      if (error) throw error
-      onStudentUpdated()
-    } catch (error) {
-      console.error("Ошибка обновления ученика:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
+      if (error) {
+        console.error("[v0] Ошибка обновления:", error)
+        toast.error("Ошибка обновления ученика")
+        throw error
+      }
 
-  const handleAddLessons = async () => {
-    if (!lessonsToAdd || !paymentAmount) return
-
-    setLoading(true)
-
-    try {
-      const supabase = createClient()
-
-      const { error } = await supabase.rpc("add_paid_lessons", {
-        p_student_id: student.id,
-        p_lessons_count: Number.parseInt(lessonsToAdd),
-        p_amount: Number.parseFloat(paymentAmount),
-        p_notes: `Добавлено ${lessonsToAdd} уроков`,
-      })
-
-      if (error) throw error
-
-      setLessonsToAdd("")
-      setPaymentAmount("")
-      setShowAddLessons(false)
-      onStudentUpdated()
-    } catch (error) {
-      console.error("Ошибка добавления уроков:", error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleDelete = async () => {
-    if (!confirm("Вы уверены, что хотите удалить этого ученика? Это действие нельзя отменить.")) {
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      const supabase = createClient()
-
-      const { error } = await supabase.from("students").delete().eq("id", student.id)
-
-      if (error) throw error
+      toast.success("Данные ученика успешно обновлены")
       onStudentUpdated()
       onOpenChange(false)
     } catch (error) {
-      console.error("Ошибка удаления ученика:", error)
+      console.error("[v0] Ошибка обновления ученика:", error)
     } finally {
       setLoading(false)
     }
   }
 
-  const handleCreateAccount = async () => {
-    setLoading(true)
-
-    try {
-      const supabase = createClient()
-
-      const { data: accountData, error: accountError } = await supabase.rpc("create_student_account", {
-        p_student_id: student.id,
-      })
-
-      if (accountError) throw accountError
-
-      const login = accountData[0].login
-      const password = accountData[0].password
-
-      console.log("[v0] Создание Supabase аккаунта через API:", { login, password })
-
-      const response = await fetch("/api/create-student-account", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          studentId: student.id,
-          login: login,
-          password: password,
-          studentName: student.name,
-        }),
-      })
-
-      const result = await response.json()
-
-      if (!response.ok) {
-        throw new Error(result.error || "Не удалось создать аккаунт")
-      }
-
-      console.log("[v0] Аккаунт успешно создан")
-
-      toast({
-        title: "Учетная запись создана",
-        description: `Логин: ${login}, Пароль: ${password}`,
-      })
-
-      onStudentUpdated()
-    } catch (error) {
-      console.error("[v0] Ошибка создания учетной записи:", error)
-      toast({
-        title: "Ошибка",
-        description: error instanceof Error ? error.message : "Не удалось создать учетную запись",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleRegenerateAccount = async () => {
-    if (!confirm("Перегенерировать учетную запись? Старые данные для входа станут недействительными.")) {
-      return
-    }
-
-    setLoading(true)
-
-    try {
-      const supabase = createClient()
-
-      // Удаляем старый аккаунт если есть
-      if (student.has_account) {
-        const { error: deleteError } = await supabase
-          .from("students")
-          .update({
-            student_login: null,
-            student_password: null,
-            auth_user_id: null,
-          })
-          .eq("id", student.id)
-
-        if (deleteError) throw deleteError
-      }
-
-      // Создаем новый аккаунт
-      await handleCreateAccount()
-    } catch (error) {
-      console.error("[v0] Ошибка перегенерации аккаунта:", error)
-      toast({
-        title: "Ошибка",
-        description: "Не удалось перегенерировать учетную запись",
-        variant: "destructive",
-      })
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const copyToClipboard = async (text: string, type: "login" | "password") => {
-    try {
-      await navigator.clipboard.writeText(text)
-      if (type === "login") {
-        setCopiedLogin(true)
-        setTimeout(() => setCopiedLogin(false), 2000)
-      } else {
-        setCopiedPassword(true)
-        setTimeout(() => setCopiedPassword(false), 2000)
-      }
-      toast({
-        title: "Скопировано",
-        description: `${type === "login" ? "Логин" : "Пароль"} скопирован в буфер обмена`,
-      })
-    } catch (error) {
-      console.error("Ошибка копирования:", error)
-    }
-  }
+  const remainingLessons = formData.total_paid_lessons - formData.completed_lessons
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[80vh] overflow-y-auto bg-white">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Информация об ученике</DialogTitle>
-          <DialogDescription>Просмотр и редактирование данных ученика</DialogDescription>
+          <DialogTitle>Редактирование ученика</DialogTitle>
+          <DialogDescription>Изменяйте данные ученика, количество оплаченных и проведенных уроков</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-6">
-          {/* Статистика */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <div className="text-2xl font-bold">{student.total_paid_lessons}</div>
-              <div className="text-sm text-muted-foreground">Всего оплачено</div>
+          {/* Статистика уроков */}
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center p-4 bg-blue-50 rounded-lg border-2 border-blue-200">
+              <div className="text-3xl font-bold text-blue-900">{formData.total_paid_lessons}</div>
+              <div className="text-sm text-blue-700 font-medium">Оплачено</div>
             </div>
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <div className="text-2xl font-bold">{student.remaining_lessons}</div>
-              <div className="text-sm text-muted-foreground">Осталось уроков</div>
+            <div className="text-center p-4 bg-green-50 rounded-lg border-2 border-green-200">
+              <div className="text-3xl font-bold text-green-900">{formData.completed_lessons}</div>
+              <div className="text-sm text-green-700 font-medium">Проведено</div>
             </div>
-          </div>
-
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium">Учетная запись ученика</h4>
-              <div className="flex gap-2">
-                {!student.has_account ? (
-                  <Button size="sm" onClick={handleCreateAccount} disabled={loading}>
-                    <UserPlus className="h-4 w-4 mr-1" />
-                    Создать аккаунт
-                  </Button>
-                ) : (
-                  <Button size="sm" variant="outline" onClick={handleRegenerateAccount} disabled={loading}>
-                    <UserPlus className="h-4 w-4 mr-1" />
-                    Перегенерировать
-                  </Button>
-                )}
-              </div>
+            <div className="text-center p-4 bg-purple-50 rounded-lg border-2 border-purple-200">
+              <div className="text-3xl font-bold text-purple-900">{remainingLessons}</div>
+              <div className="text-sm text-purple-700 font-medium">Осталось</div>
             </div>
-
-            {student.has_account && student.student_login && student.student_password && (
-              <div className="p-4 bg-muted rounded-lg space-y-3">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Логин</Label>
-                    <div className="font-mono font-medium">{student.student_login}</div>
-                  </div>
-                  <Button size="sm" variant="ghost" onClick={() => copyToClipboard(student.student_login!, "login")}>
-                    {copiedLogin ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
-                </div>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <Label className="text-xs text-muted-foreground">Пароль</Label>
-                    <div className="font-mono font-medium">{student.student_password}</div>
-                  </div>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => copyToClipboard(student.student_password!, "password")}
-                  >
-                    {copiedPassword ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                  </Button>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Добавление уроков */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="font-medium">Управление уроками</h4>
-              <Button size="sm" onClick={() => setShowAddLessons(!showAddLessons)}>
-                <Plus className="h-4 w-4 mr-1" />
-                Добавить уроки
-              </Button>
-            </div>
-
-            {showAddLessons && (
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label htmlFor="lessons">Количество уроков</Label>
-                  <Input
-                    id="lessons"
-                    type="number"
-                    min="1"
-                    value={lessonsToAdd}
-                    onChange={(e) => setLessonsToAdd(e.target.value)}
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="amount">Сумма оплаты (₽)</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={paymentAmount}
-                    onChange={(e) => setPaymentAmount(e.target.value)}
-                  />
-                </div>
-                <div className="col-span-2">
-                  <Button
-                    onClick={handleAddLessons}
-                    disabled={loading || !lessonsToAdd || !paymentAmount}
-                    className="w-full"
-                  >
-                    Добавить уроки
-                  </Button>
-                </div>
-              </div>
-            )}
           </div>
 
           <Separator />
 
-          {/* Форма редактирования */}
+          {/* Управление уроками */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <Label htmlFor="active">Активный ученик</Label>
-              <Switch
-                id="active"
-                checked={formData.is_active}
-                onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
-              />
-            </div>
+            <h3 className="font-semibold text-lg">Управление уроками</h3>
 
-            <div className="grid gap-3">
+            <div className="space-y-3">
               <div>
-                <Label htmlFor="name">Имя</Label>
+                <Label>Оплачено уроков</Label>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        total_paid_lessons: Math.max(0, formData.total_paid_lessons - 1),
+                      })
+                    }
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formData.total_paid_lessons}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        total_paid_lessons: Number.parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="text-center text-lg font-semibold"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        total_paid_lessons: formData.total_paid_lessons + 1,
+                      })
+                    }
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <Label>Проведено уроков</Label>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        completed_lessons: Math.max(0, formData.completed_lessons - 1),
+                      })
+                    }
+                  >
+                    <Minus className="h-4 w-4" />
+                  </Button>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={formData.completed_lessons}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        completed_lessons: Number.parseInt(e.target.value) || 0,
+                      })
+                    }
+                    className="text-center text-lg font-semibold"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() =>
+                      setFormData({
+                        ...formData,
+                        completed_lessons: formData.completed_lessons + 1,
+                      })
+                    }
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Личные данные */}
+          <div className="space-y-4">
+            <h3 className="font-semibold text-lg">Личные данные</h3>
+
+            <div className="grid gap-4">
+              <div>
+                <Label htmlFor="full_name">Полное имя</Label>
                 <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  id="full_name"
+                  value={formData.full_name}
+                  onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                  placeholder="Иванов Иван Иванович"
                 />
               </div>
 
@@ -392,57 +240,32 @@ export function StudentDetailsDialog({ student, open, onOpenChange, onStudentUpd
                   type="email"
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  placeholder="student@example.com"
                 />
               </div>
 
               <div>
-                <Label htmlFor="phone">Телефон</Label>
+                <Label htmlFor="phone_number">Телефон</Label>
                 <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="hourly_rate">Стоимость урока (₽)</Label>
-                <Input
-                  id="hourly_rate"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  value={formData.hourly_rate}
-                  onChange={(e) => setFormData({ ...formData, hourly_rate: e.target.value })}
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="notes">Заметки</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                  rows={3}
+                  id="phone_number"
+                  value={formData.phone_number}
+                  onChange={(e) => setFormData({ ...formData, phone_number: e.target.value })}
+                  placeholder="+7 (999) 123-45-67"
                 />
               </div>
             </div>
           </div>
         </div>
 
-        <DialogFooter className="flex justify-between">
-          <Button variant="destructive" onClick={handleDelete} disabled={loading}>
-            <Trash2 className="h-4 w-4 mr-2" />
-            Удалить
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+            <X className="mr-2 h-4 w-4" />
+            Отмена
           </Button>
-
-          <div className="space-x-2">
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              Отмена
-            </Button>
-            <Button onClick={handleUpdate} disabled={loading}>
-              {loading ? "Сохранение..." : "Сохранить"}
-            </Button>
-          </div>
+          <Button onClick={handleUpdate} disabled={loading} className="bg-blue-600 hover:bg-blue-700">
+            <Save className="mr-2 h-4 w-4" />
+            {loading ? "Сохранение..." : "Сохранить изменения"}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

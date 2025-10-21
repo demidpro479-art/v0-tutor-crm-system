@@ -4,16 +4,22 @@ import { useState, useEffect } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Users, GraduationCap, DollarSign, TrendingUp, UserPlus, Database } from "lucide-react"
+import { Users, GraduationCap, DollarSign, TrendingUp, UserPlus, Database, UserCog, UsersRound } from "lucide-react"
 import { AddUserDialog } from "@/components/add-user-dialog"
 import { AdminDatabaseAccess } from "@/components/admin-database-access"
 import { AdminPayoutsManagement } from "@/components/admin-payouts-management"
+import { UsersTable } from "@/components/users-table"
+import { StudentsTable } from "@/components/students-table"
+import { StudentMigration } from "@/components/student-migration"
 import { createClient } from "@/lib/supabase/client"
 
 export function AdminDashboard() {
   const [showAddUser, setShowAddUser] = useState(false)
   const [loading, setLoading] = useState(true)
   const [monthlyStats, setMonthlyStats] = useState<any>(null)
+  const [users, setUsers] = useState<any[]>([])
+  const [students, setStudents] = useState<any[]>([])
+  const [tutors, setTutors] = useState<any[]>([])
 
   useEffect(() => {
     loadData()
@@ -49,6 +55,44 @@ export function AdminDashboard() {
       completed_lessons: lessonsData?.length || 0,
       total_users: usersCount || 0,
     })
+
+    const { data: usersData } = await supabase.from("profiles").select("*").order("created_at", { ascending: false })
+    setUsers(usersData || [])
+
+    const { data: studentsData } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("role", "student")
+      .order("created_at", { ascending: false })
+
+    if (studentsData) {
+      // Загружаю уроки для каждого ученика
+      const studentsWithLessons = await Promise.all(
+        studentsData.map(async (student) => {
+          const { count: paidCount } = await supabase
+            .from("lessons")
+            .select("*", { count: "exact", head: true })
+            .eq("student_id", student.user_id)
+
+          const { count: completedCount } = await supabase
+            .from("lessons")
+            .select("*", { count: "exact", head: true })
+            .eq("student_id", student.user_id)
+            .eq("status", "completed")
+
+          return {
+            ...student,
+            total_paid_lessons: paidCount || 0,
+            completed_lessons: completedCount || 0,
+          }
+        }),
+      )
+      setStudents(studentsWithLessons)
+    }
+
+    const { data: tutorsData } = await supabase.from("profiles").select("*").eq("role", "tutor")
+    setTutors(tutorsData || [])
+
     setLoading(false)
   }
 
@@ -139,6 +183,27 @@ export function AdminDashboard() {
               База данных
             </TabsTrigger>
             <TabsTrigger
+              value="users"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white"
+            >
+              <UserCog className="mr-2 h-4 w-4" />
+              Пользователи
+            </TabsTrigger>
+            <TabsTrigger
+              value="students"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white"
+            >
+              <GraduationCap className="mr-2 h-4 w-4" />
+              Ученики
+            </TabsTrigger>
+            <TabsTrigger
+              value="migration"
+              className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white"
+            >
+              <UsersRound className="mr-2 h-4 w-4" />
+              Миграция
+            </TabsTrigger>
+            <TabsTrigger
               value="payouts"
               className="data-[state=active]:bg-gradient-to-r data-[state=active]:from-blue-600 data-[state=active]:to-purple-600 data-[state=active]:text-white"
             >
@@ -149,6 +214,24 @@ export function AdminDashboard() {
 
           <TabsContent value="database">
             <AdminDatabaseAccess />
+          </TabsContent>
+
+          <TabsContent value="users">
+            <Card className="p-6">
+              <UsersTable users={users} onUpdate={loadData} />
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="students">
+            <Card className="p-6">
+              <StudentsTable students={students} tutors={tutors} onUpdate={loadData} />
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="migration">
+            <Card className="p-6">
+              <StudentMigration students={students} tutors={tutors} onMigrationComplete={loadData} />
+            </Card>
           </TabsContent>
 
           <TabsContent value="payouts">

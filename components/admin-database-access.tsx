@@ -8,17 +8,39 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Database, Edit, Trash2, Save, X } from "lucide-react"
+import { Database, Edit, Trash2, Save, X, Search } from "lucide-react"
 import { toast } from "sonner"
 
 export function AdminDatabaseAccess() {
   const [profiles, setProfiles] = useState<any[]>([])
+  const [filteredProfiles, setFilteredProfiles] = useState<any[]>([])
   const [editingProfile, setEditingProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
+  const [searchQuery, setSearchQuery] = useState("")
+  const [roleFilter, setRoleFilter] = useState("all")
 
   useEffect(() => {
     loadProfiles()
   }, [])
+
+  useEffect(() => {
+    let filtered = profiles
+
+    if (searchQuery) {
+      filtered = filtered.filter(
+        (p) =>
+          p.full_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.phone_number?.toLowerCase().includes(searchQuery.toLowerCase()),
+      )
+    }
+
+    if (roleFilter !== "all") {
+      filtered = filtered.filter((p) => p.role === roleFilter)
+    }
+
+    setFilteredProfiles(filtered)
+  }, [profiles, searchQuery, roleFilter])
 
   async function loadProfiles() {
     const supabase = createClient()
@@ -28,7 +50,28 @@ export function AdminDatabaseAccess() {
       toast.error("Ошибка загрузки данных")
       console.error(error)
     } else {
-      setProfiles(data || [])
+      const profilesWithLessons = await Promise.all(
+        (data || []).map(async (profile) => {
+          const { count: totalLessons } = await supabase
+            .from("lessons")
+            .select("*", { count: "exact", head: true })
+            .eq("student_id", profile.user_id)
+
+          const { count: completedLessons } = await supabase
+            .from("lessons")
+            .select("*", { count: "exact", head: true })
+            .eq("student_id", profile.user_id)
+            .eq("status", "completed")
+
+          return {
+            ...profile,
+            total_paid_lessons: totalLessons || profile.total_paid_lessons || 0,
+            completed_lessons: completedLessons || profile.completed_lessons || 0,
+          }
+        }),
+      )
+      setProfiles(profilesWithLessons)
+      setFilteredProfiles(profilesWithLessons)
     }
     setLoading(false)
   }
@@ -96,6 +139,38 @@ export function AdminDatabaseAccess() {
             <p className="text-sm text-slate-600">Полный контроль над всеми пользователями системы</p>
           </div>
         </div>
+
+        <div className="flex gap-4 mt-4">
+          <div className="flex-1">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+              <Input
+                placeholder="Поиск по имени, email или телефону..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+          </div>
+          <div className="w-48">
+            <select
+              className="w-full px-3 py-2 border rounded-md"
+              value={roleFilter}
+              onChange={(e) => setRoleFilter(e.target.value)}
+            >
+              <option value="all">Все роли</option>
+              <option value="student">Ученики</option>
+              <option value="tutor">Репетиторы</option>
+              <option value="manager">Менеджеры</option>
+              <option value="admin">Администраторы</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-4 text-sm text-slate-600">
+          Найдено: <span className="font-semibold">{filteredProfiles.length}</span> из{" "}
+          <span className="font-semibold">{profiles.length}</span>
+        </div>
       </Card>
 
       <Card className="p-6">
@@ -115,7 +190,7 @@ export function AdminDatabaseAccess() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {profiles.map((profile) => (
+              {filteredProfiles.map((profile) => (
                 <TableRow key={profile.id}>
                   <TableCell className="font-medium">{profile.full_name}</TableCell>
                   <TableCell>{profile.email}</TableCell>

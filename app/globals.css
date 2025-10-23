@@ -4,7 +4,7 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Премиум цветовая схема с градиентами */
+  /* Enhanced premium color scheme with better contrast and modern gradients */
   --background: 250 251 252;
   --foreground: 15 23 42;
   --card: 255 255 255;
@@ -132,14 +132,14 @@
   }
 }
 
-/* Премиум анимации и эффекты */
+/* Enhanced premium animations and effects with smooth transitions */
 @layer utilities {
   .glass-effect {
-    @apply bg-white/80 backdrop-blur-xl border border-white/20 shadow-xl;
+    @apply bg-white/90 backdrop-blur-xl border border-white/30 shadow-2xl;
   }
 
   .glass-effect-dark {
-    @apply bg-slate-900/80 backdrop-blur-xl border border-slate-700/20 shadow-xl;
+    @apply bg-slate-900/90 backdrop-blur-xl border border-slate-700/30 shadow-2xl;
   }
 
   .gradient-primary {
@@ -150,19 +150,49 @@
     @apply bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500;
   }
 
+  .gradient-success {
+    @apply bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500;
+  }
+
+  .gradient-warning {
+    @apply bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500;
+  }
+
   .animate-fade-in {
-    animation: fadeIn 0.5s ease-in-out;
+    animation: fadeIn 0.6s ease-in-out;
   }
 
   .animate-slide-up {
-    animation: slideUp 0.5s ease-out;
+    animation: slideUp 0.6s ease-out;
   }
 
   .animate-scale-in {
-    animation: scaleIn 0.3s ease-out;
+    animation: scaleIn 0.4s ease-out;
+  }
+
+  .animate-slide-in {
+    animation: slideIn 0.5s ease-out;
+  }
+
+  /* Added smooth hover effects for interactive elements */
+  .hover-lift {
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl;
+  }
+
+  .hover-glow {
+    @apply transition-all duration-300 hover:shadow-lg hover:shadow-primary/50;
+  }
+
+  .card-gradient {
+    @apply bg-gradient-to-br from-white via-white to-primary/5;
+  }
+
+  .card-gradient-dark {
+    @apply bg-gradient-to-br from-slate-900 via-slate-900 to-primary/10;
   }
 }
 
+/* Enhanced keyframe animations with smoother easing */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -174,7 +204,7 @@
 
 @keyframes slideUp {
   from {
-    transform: translateY(20px);
+    transform: translateY(30px);
     opacity: 0;
   }
   to {
@@ -185,11 +215,50 @@
 
 @keyframes scaleIn {
   from {
-    transform: scale(0.95);
+    transform: scale(0.9);
     opacity: 0;
   }
   to {
     transform: scale(1);
     opacity: 1;
   }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* Added smooth scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-muted/30 rounded-full;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-primary/30 rounded-full hover:bg-primary/50 transition-colors;
+}
+
+/* Enhanced focus states for accessibility */
+*:focus-visible {
+  @apply outline-2 outline-offset-2 outline-primary;
+}
+
+/* Smooth transitions for all interactive elements */
+button,
+a,
+input,
+select,
+textarea {
+  @apply transition-all duration-200;
 }

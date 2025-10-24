@@ -4,65 +4,27 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  /* Enhanced premium color scheme with better contrast and modern gradients */
+  /* Light theme (fallback) */
   --background: 250 251 252;
   --foreground: 15 23 42;
   --card: 255 255 255;
   --card-foreground: 15 23 42;
   --popover: 255 255 255;
   --popover-foreground: 15 23 42;
-  --primary: 99 102 241;
+  --primary: 139 92 246;
   --primary-foreground: 255 255 255;
   --secondary: 241 245 249;
   --secondary-foreground: 15 23 42;
   --muted: 248 250 252;
   --muted-foreground: 100 116 139;
-  --accent: 139 92 246;
+  --accent: 236 72 153;
   --accent-foreground: 255 255 255;
   --destructive: 239 68 68;
   --destructive-foreground: 255 255 255;
   --border: 226 232 240;
   --input: 226 232 240;
-  --ring: 99 102 241;
-  --success: 34 197 94;
-  --warning: 251 146 60;
-  --info: 59 130 246;
-  --chart-1: 99 102 241;
-  --chart-2: 139 92 246;
-  --chart-3: 236 72 153;
-  --chart-4: 59 130 246;
-  --chart-5: 34 197 94;
-  --radius: 0.75rem;
-  --sidebar: 255 255 255;
-  --sidebar-foreground: 15 23 42;
-  --sidebar-primary: 99 102 241;
-  --sidebar-primary-foreground: 255 255 255;
-  --sidebar-accent: 248 250 252;
-  --sidebar-accent-foreground: 15 23 42;
-  --sidebar-border: 226 232 240;
-  --sidebar-ring: 99 102 241;
-}
-
-.dark {
-  --background: 15 23 42;
-  --foreground: 248 250 252;
-  --card: 30 41 59;
-  --card-foreground: 248 250 252;
-  --popover: 30 41 59;
-  --popover-foreground: 248 250 252;
-  --primary: 139 92 246;
-  --primary-foreground: 255 255 255;
-  --secondary: 51 65 85;
-  --secondary-foreground: 248 250 252;
-  --muted: 51 65 85;
-  --muted-foreground: 148 163 184;
-  --accent: 236 72 153;
-  --accent-foreground: 255 255 255;
-  --destructive: 220 38 38;
-  --destructive-foreground: 248 250 252;
-  --border: 51 65 85;
-  --input: 51 65 85;
   --ring: 139 92 246;
+  --radius: 0.75rem;
   --success: 34 197 94;
   --warning: 251 146 60;
   --info: 59 130 246;
@@ -81,7 +43,40 @@
   --sidebar-ring: 139 92 246;
 }
 
+.dark {
+  /* Enhanced premium dark theme with deep colors and better contrast */
+  --background: 8 12 25;
+  --foreground: 248 250 252;
+  --card: 15 20 35;
+  --card-foreground: 248 250 252;
+  --popover: 18 23 38;
+  --popover-foreground: 248 250 252;
+  --primary: 147 51 234;
+  --primary-foreground: 255 255 255;
+  --secondary: 25 30 50;
+  --secondary-foreground: 248 250 252;
+  --muted: 30 35 55;
+  --muted-foreground: 148 163 184;
+  --accent: 236 72 153;
+  --accent-foreground: 255 255 255;
+  --destructive: 239 68 68;
+  --destructive-foreground: 248 250 252;
+  --border: 35 40 60;
+  --input: 25 30 50;
+  --ring: 147 51 234;
+  --radius: 0.75rem;
+  --sidebar: 30 41 59;
+  --sidebar-foreground: 248 250 252;
+  --sidebar-primary: 139 92 246;
+  --sidebar-primary-foreground: 255 255 255;
+  --sidebar-accent: 51 65 85;
+  --sidebar-accent-foreground: 248 250 252;
+  --sidebar-border: 51 65 85;
+  --sidebar-ring: 139 92 246;
+}
+
 @theme inline {
+  /* optional: --font-sans, --font-serif, --font-mono if they are applied in the layout.tsx */
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-card: var(--card);
@@ -101,9 +96,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-info: var(--info);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -132,67 +124,50 @@
   }
 }
 
-/* Enhanced premium animations and effects with smooth transitions */
+/* Premium dark theme utilities with glass effects and gradients */
 @layer utilities {
+  .glass-card {
+    @apply bg-card/80 backdrop-blur-2xl border border-border/50 shadow-2xl;
+  }
+
   .glass-effect {
-    @apply bg-white/90 backdrop-blur-xl border border-white/30 shadow-2xl;
+    @apply bg-white/80 backdrop-blur-xl border border-slate-200/50;
   }
 
   .glass-effect-dark {
-    @apply bg-slate-900/90 backdrop-blur-xl border border-slate-700/30 shadow-2xl;
+    @apply bg-slate-900/80 backdrop-blur-xl border border-slate-700/50;
   }
 
   .gradient-primary {
-    @apply bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500;
+    @apply bg-gradient-to-br from-purple-600 via-pink-600 to-purple-700;
   }
 
-  .gradient-secondary {
-    @apply bg-gradient-to-r from-blue-500 via-cyan-500 to-teal-500;
+  .gradient-accent {
+    @apply bg-gradient-to-br from-pink-600 via-purple-600 to-indigo-600;
   }
 
   .gradient-success {
-    @apply bg-gradient-to-r from-emerald-500 via-green-500 to-teal-500;
+    @apply bg-gradient-to-br from-emerald-500 to-teal-600;
   }
 
   .gradient-warning {
     @apply bg-gradient-to-r from-orange-500 via-amber-500 to-yellow-500;
   }
 
-  .animate-fade-in {
-    animation: fadeIn 0.6s ease-in-out;
-  }
-
-  .animate-slide-up {
-    animation: slideUp 0.6s ease-out;
-  }
-
-  .animate-scale-in {
-    animation: scaleIn 0.4s ease-out;
-  }
-
-  .animate-slide-in {
-    animation: slideIn 0.5s ease-out;
-  }
-
-  /* Added smooth hover effects for interactive elements */
   .hover-lift {
-    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-xl;
+    @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl;
   }
 
   .hover-glow {
-    @apply transition-all duration-300 hover:shadow-lg hover:shadow-primary/50;
-  }
-
-  .card-gradient {
-    @apply bg-gradient-to-br from-white via-white to-primary/5;
+    @apply transition-all duration-300 hover:shadow-lg hover:shadow-primary/30;
   }
 
   .card-gradient-dark {
-    @apply bg-gradient-to-br from-slate-900 via-slate-900 to-primary/10;
+    @apply bg-gradient-to-br from-slate-900/90 via-slate-900/80 to-purple-900/20;
   }
 }
 
-/* Enhanced keyframe animations with smoother easing */
+/* Smooth animations for premium feel */
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -204,7 +179,7 @@
 
 @keyframes slideUp {
   from {
-    transform: translateY(30px);
+    transform: translateY(20px);
     opacity: 0;
   }
   to {
@@ -215,7 +190,7 @@
 
 @keyframes scaleIn {
   from {
-    transform: scale(0.9);
+    transform: scale(0.95);
     opacity: 0;
   }
   to {
@@ -224,37 +199,38 @@
   }
 }
 
-@keyframes slideIn {
-  from {
-    transform: translateX(-20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+.animate-fade-in {
+  animation: fadeIn 0.5s ease-out;
 }
 
-/* Added smooth scrollbar styling */
+.animate-slide-up {
+  animation: slideUp 0.5s ease-out;
+}
+
+.animate-scale-in {
+  animation: scaleIn 0.4s ease-out;
+}
+
+/* Custom scrollbar for dark theme */
 ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-  @apply bg-muted/30 rounded-full;
+  @apply bg-muted/20 rounded-full;
 }
 
 ::-webkit-scrollbar-thumb {
-  @apply bg-primary/30 rounded-full hover:bg-primary/50 transition-colors;
+  @apply bg-primary/40 rounded-full hover:bg-primary/60 transition-colors;
 }
 
-/* Enhanced focus states for accessibility */
+/* Enhanced focus states */
 *:focus-visible {
-  @apply outline-2 outline-offset-2 outline-primary;
+  @apply outline-2 outline-offset-2 outline-primary ring-2 ring-primary/20;
 }
 
-/* Smooth transitions for all interactive elements */
+/* Smooth transitions */
 button,
 a,
 input,

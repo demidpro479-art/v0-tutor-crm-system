@@ -29,7 +29,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="ru" className="h-full">
+    <html lang="ru" className="h-full dark">
       <body className={`font-sans ${inter.variable} ${jetbrainsMono.variable} h-full antialiased`}>
         <Suspense fallback={null}>
           {children}

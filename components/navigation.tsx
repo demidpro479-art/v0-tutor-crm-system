@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button"
 import { createClient } from "@/lib/supabase/client"
 import { useRouter, usePathname } from "next/navigation"
 import Link from "next/link"
-import { Home, Calendar, BarChart3, LogOut, Menu, X } from "lucide-react"
+import { Home, Calendar, BarChart3, LogOut, Menu, X, MessageSquare } from "lucide-react"
 import { useState, useEffect } from "react"
 import { cn } from "@/lib/utils"
 import { RoleSwitcher } from "@/components/role-switcher"
@@ -13,6 +13,7 @@ const navigation = [
   { name: "Дашборд", href: "/dashboard", icon: Home },
   { name: "Календарь", href: "/calendar", icon: Calendar },
   { name: "Статистика", href: "/statistics", icon: BarChart3 },
+  { name: "Чаты", href: "/chat", icon: MessageSquare },
 ]
 
 export function Navigation() {

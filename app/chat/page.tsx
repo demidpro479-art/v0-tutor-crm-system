@@ -2,6 +2,8 @@ import { redirect } from "next/navigation"
 import { createServerClient } from "@/lib/supabase/server"
 import { ChatInterface } from "@/components/chat-interface"
 
+export const dynamic = "force-dynamic"
+
 export default async function ChatPage() {
   const supabase = await createServerClient()
 
